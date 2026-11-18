@@ -1,0 +1,6159 @@
+﻿=== CLIENT package.json ===
+{
+  "name": "client",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint src",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^7.0.6",
+    "@tailwindcss/vite": "^4.3.5",
+    "@tanstack/react-query": "^5.107.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.73.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-hook-form": "^7.92.0",
+    "react-router-dom": "^7.18.5",
+    "recharts": "^3.10.1",
+    "sonner": "^2.0.8",
+    "tailwind-merge": "^3.7.0",
+    "tailwindcss": "^4.3.5",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "oxlint": "^1.90.0",
+    "typescript": "~7.0.2",
+    "vite": "^8.3.8"
+  }
+}
+=== CLIENT FILE LIST ===
+client\src\App.tsx
+client\src\index.css
+client\src\main.tsx
+client\src\types.ts
+client\src\components\CourseCard.tsx
+client\src\components\DiscussionSection.tsx
+client\src\components\VideoPlayer.tsx
+client\src\components\auth\AuthLayout.tsx
+client\src\components\auth\NetworkIllustration.tsx
+client\src\components\layout\AppShell.tsx
+client\src\components\layout\nav.ts
+client\src\components\layout\Sidebar.tsx
+client\src\components\ui\Button.tsx
+client\src\components\ui\Card.tsx
+client\src\components\ui\Checkbox.tsx
+client\src\components\ui\Feedback.tsx
+client\src\components\ui\Field.tsx
+client\src\components\ui\Logo.tsx
+client\src\components\ui\ProgressRing.tsx
+client\src\components\ui\ThemedToaster.tsx
+client\src\components\ui\ThemeToggle.tsx
+client\src\context\AuthContext.tsx
+client\src\context\ThemeContext.tsx
+client\src\features\auth\authForm.ts
+client\src\features\auth\ForgotPasswordPage.tsx
+client\src\features\auth\LoginPage.tsx
+client\src\features\auth\RegisterPage.tsx
+client\src\features\auth\ResetPasswordPage.tsx
+client\src\features\home\NotFoundPage.tsx
+client\src\features\home\RoleHome.tsx
+client\src\features\student\DashboardPage.tsx
+client\src\hooks\useDebounce.ts
+client\src\lib\api.ts
+client\src\lib\cn.ts
+client\src\lib\format.ts
+client\src\pages\CourseCatalog.tsx
+client\src\pages\CourseDetail.tsx
+client\src\pages\LessonPage.tsx
+client\src\routes\ProtectedRoute.tsx
+client\src\styles\lms.css
+client\src\types\index.ts
+
+=== server\src\app.ts ===
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import cookieParser from "cookie-parser";
+import rateLimit from "express-rate-limit";
+import authRoutes from "./modules/auth/auth.routes";
+import { authenticate, AuthRequest } from "./middlewares/auth.middleware";
+import { authorize } from "./middlewares/role.middleware";
+import { errorHandler } from "./middlewares/error.middleware";
+import userRoutes from "./modules/users/user.routes";
+import courseRoutes from "./modules/courses/course.routes";
+import enrollmentRoutes from "./modules/enrollments/enrollment.routes";
+import lessonRoutes from "./modules/lessons/lesson.routes";
+import progressRoutes from "./modules/progress/progress.routes";
+import studentRoutes from "./modules/students/student.routes";
+import instructorRoutes from "./modules/instructors/instructor.routes";
+import reviewRoutes from "./modules/reviews/review.routes";
+import wishlistRoutes from "./modules/wishlist/wishlist.routes";
+import adminRoutes from "./modules/admin/admin.routes";
+import learningPathRoutes from "./modules/learningPaths/learningPath.routes";
+import discussionRoutes from "./modules/discussions/discussion.routes";
+import learningTimeRoutes from "./modules/learningTime/learningTime.routes";
+import resourceRoutes from "./modules/resources/resource.routes";
+import courseVersionRoutes from "./modules/courseVersions/courseVersion.routes";
+import assignmentRoutes from "./modules/assignments/assignment.routes";
+import peerReviewRoutes from "./modules/peerReviews/peerReview.routes";
+import certificateRoutes from "./modules/certificates/certificate.routes";
+import guardianRoutes from "./modules/guardians/guardianAccess.routes";
+import organizationRoutes from "./modules/organizations/organization.routes";
+
+const app = express();
+
+app.use(helmet());
+
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    credentials: true,
+  })
+);
+
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+
+app.use(cookieParser());
+
+app.use(
+  "/api",
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 500,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+  })
+);
+
+app.get("/api/health", (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "SkillForge LMS API is running",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get(
+  "/api/admin/test",
+  authenticate,
+  authorize("admin"),
+  (_req, res) => {
+    res.status(200).json({
+      success: true,
+      message: "Admin access granted",
+    });
+  }
+);
+
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/courses", courseRoutes);
+app.use("/api/enrollments", enrollmentRoutes);
+app.use("/api/lessons", lessonRoutes);
+app.use("/api/progress", progressRoutes);
+app.use("/api/students", studentRoutes);
+app.use("/api/instructors", instructorRoutes);
+app.use("/api/reviews", reviewRoutes);
+app.use("/api/wishlist", wishlistRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/learning-paths", learningPathRoutes);
+app.use("/api/discussions", discussionRoutes);
+app.use("/api/learning-time", learningTimeRoutes);
+app.use("/api/resources", resourceRoutes);
+app.use("/api/course-versions", courseVersionRoutes);
+app.use("/api/assignments", assignmentRoutes);
+app.use("/api/peer-reviews", peerReviewRoutes);
+app.use("/api/certificates", certificateRoutes);
+app.use("/api/guardians", guardianRoutes);
+app.use("/api/organizations", organizationRoutes);
+
+// Unknown routes
+app.use((_req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
+});
+
+// Error handler must come after routes and other middleware.
+app.use(errorHandler);
+
+export default app;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\admin\admin.routes.ts ===
+import { Router } from "express";
+
+import {
+  getAdminDashboard,
+  getAllUsers,
+  getUserById,
+  updateUserStatus,
+  getAllCourses,
+  getCourseById,
+  approveCourse,
+  rejectCourse,
+  adminDeleteCourse,
+} from "./admin.controller";
+
+import {
+  authenticate,
+  authorize,
+} from "../../middlewares/auth.middleware";
+
+const router = Router();
+
+// All admin routes require admin authentication
+router.use(authenticate);
+router.use(authorize("admin"));
+
+// Dashboard
+router.get("/dashboard", getAdminDashboard);
+
+// User Management
+router.get("/users", getAllUsers);
+router.get("/users/:userId", getUserById);
+router.patch("/users/:userId/status", updateUserStatus);
+
+// Course Management
+router.get("/courses", getAllCourses);
+router.get("/courses/:courseId", getCourseById);
+router.patch("/courses/:courseId/approve", approveCourse);
+router.patch("/courses/:courseId/reject", rejectCourse);
+router.delete("/courses/:courseId", adminDeleteCourse);
+
+export default router;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\admin\admin.validation.ts ===
+import { z } from "zod";
+
+export const adminUserQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+
+  limit: z.coerce.number().int().min(1).max(100).default(10),
+
+  role: z.enum(["student", "instructor", "admin"]).optional(),
+
+  search: z.string().trim().max(100).optional(),
+});
+
+export const updateUserStatusSchema = z.object({
+  isActive: z.boolean({
+    error: "isActive must be a boolean",
+  }),
+});
+
+export type AdminUserQueryInput = z.infer<
+  typeof adminUserQuerySchema
+>;
+
+export type UpdateUserStatusInput = z.infer<
+  typeof updateUserStatusSchema
+>;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\assignments\assignment.model.ts ===
+import mongoose, { Schema, type Document } from "mongoose";
+
+export interface IRubricItem {
+  id?: string;
+  criterion: string;
+  maxPoints: number;
+  description?: string;
+}
+
+export interface IAssignment extends Document {
+  course: mongoose.Types.ObjectId;
+  lesson?: mongoose.Types.ObjectId;
+  instructor: mongoose.Types.ObjectId;
+  title: string;
+  description: string;
+  assignmentType: "text" | "code";
+  allowedLanguages?: string[];
+  dueDate: Date;
+  maxScore: number;
+  rubrics: IRubricItem[];
+  similarityThreshold: number;
+  isPeerReviewEnabled: boolean;
+  peerReviewsPerSubmission: number;
+  peerReviewDeadline?: Date;
+  aiEvaluationEnabled: boolean;
+  isPublished: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const rubricItemSchema = new Schema<IRubricItem>(
+  {
+    criterion: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    maxPoints: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+    description: {
+      type: String,
+      trim: true,
+    },
+  },
+  { _id: true }
+);
+
+const assignmentSchema = new Schema<IAssignment>(
+  {
+    course: {
+      type: Schema.Types.ObjectId,
+      ref: "Course",
+      required: true,
+      index: true,
+    },
+    lesson: {
+      type: Schema.Types.ObjectId,
+      ref: "Lesson",
+    },
+    instructor: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 200,
+    },
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    assignmentType: {
+      type: String,
+      enum: ["text", "code"],
+      default: "text",
+      required: true,
+    },
+    allowedLanguages: [
+      {
+        type: String,
+        trim: true,
+        lowercase: true,
+      },
+    ],
+    dueDate: {
+      type: Date,
+      required: true,
+    },
+    maxScore: {
+      type: Number,
+      default: 100,
+      min: 1,
+    },
+    rubrics: {
+      type: [rubricItemSchema],
+      default: [],
+    },
+    similarityThreshold: {
+      type: Number,
+      default: 40,
+      min: 0,
+      max: 100,
+    },
+    isPeerReviewEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    peerReviewsPerSubmission: {
+      type: Number,
+      default: 2,
+      min: 1,
+      max: 5,
+    },
+    peerReviewDeadline: {
+      type: Date,
+    },
+    aiEvaluationEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    isPublished: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+assignmentSchema.index({ course: 1, isPublished: 1 });
+assignmentSchema.index({ instructor: 1, createdAt: -1 });
+
+export const Assignment = mongoose.model<IAssignment>(
+  "Assignment",
+  assignmentSchema
+);
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\assignments\assignment.routes.ts ===
+import { Router } from "express";
+
+import {
+  createAssignment,
+  getAssignmentsByCourse,
+  getAssignmentById,
+  updateAssignment,
+  deleteAssignment,
+  submitAssignment,
+  getSubmissionsByAssignment,
+  getSubmissionDetail,
+  gradeSubmission,
+  triggerPlagiarismCheck,
+  triggerAiEvaluation,
+} from "./assignment.controller";
+
+import { authenticate } from "../../middlewares/auth.middleware";
+import { authorize } from "../../middlewares/role.middleware";
+import { validate } from "../../middlewares/validate.middleware";
+import {
+  createAssignmentSchema,
+  updateAssignmentSchema,
+  submitAssignmentSchema,
+  gradeSubmissionSchema,
+} from "./assignment.validation";
+
+const router = Router();
+
+router.use(authenticate);
+
+// Course assignments
+router.get("/course/:courseId", getAssignmentsByCourse);
+
+// Single assignment CRUD
+router.post(
+  "/",
+  authorize("instructor", "admin"),
+  validate(createAssignmentSchema),
+  createAssignment
+);
+
+router.get("/:id", getAssignmentById);
+
+router.put(
+  "/:id",
+  authorize("instructor", "admin"),
+  validate(updateAssignmentSchema),
+  updateAssignment
+);
+
+router.delete("/:id", authorize("instructor", "admin"), deleteAssignment);
+
+// Student submission
+router.post(
+  "/:id/submit",
+  authorize("student"),
+  validate(submitAssignmentSchema),
+  submitAssignment
+);
+
+// Instructor view submissions for assignment
+router.get(
+  "/:id/submissions",
+  authorize("instructor", "admin"),
+  getSubmissionsByAssignment
+);
+
+// Submission detail & grading
+router.get("/submissions/:submissionId", getSubmissionDetail);
+
+router.post(
+  "/submissions/:submissionId/grade",
+  authorize("instructor", "admin"),
+  validate(gradeSubmissionSchema),
+  gradeSubmission
+);
+
+// Manual recheck endpoints
+router.post(
+  "/submissions/:submissionId/plagiarism-check",
+  authorize("instructor", "admin"),
+  triggerPlagiarismCheck
+);
+
+router.post(
+  "/submissions/:submissionId/ai-evaluation",
+  authorize("instructor", "admin"),
+  triggerAiEvaluation
+);
+
+export default router;
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\assignments\assignment.validation.ts ===
+import { z } from "zod";
+
+const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+
+export const rubricItemSchema = z.object({
+  criterion: z.string().min(2, "Criterion must be at least 2 characters"),
+  maxPoints: z.number().min(1, "Max points must be at least 1"),
+  description: z.string().optional(),
+});
+
+export const createAssignmentSchema = z.object({
+  courseId: z
+    .string()
+    .regex(objectIdRegex, "Invalid course ID format"),
+  lessonId: z
+    .string()
+    .regex(objectIdRegex, "Invalid lesson ID format")
+    .optional(),
+  title: z
+    .string()
+    .min(3, "Title must be at least 3 characters")
+    .max(200, "Title cannot exceed 200 characters"),
+  description: z
+    .string()
+    .min(10, "Description must be at least 10 characters"),
+  assignmentType: z.enum(["text", "code"]).default("text"),
+  allowedLanguages: z.array(z.string().trim().toLowerCase()).optional(),
+  dueDate: z
+    .string()
+    .refine((val) => !isNaN(Date.parse(val)), {
+      message: "Invalid date format for dueDate",
+    }),
+  maxScore: z.number().min(1).default(100),
+  rubrics: z.array(rubricItemSchema).optional().default([]),
+  similarityThreshold: z.number().min(0).max(100).default(40),
+  isPeerReviewEnabled: z.boolean().default(false),
+  peerReviewsPerSubmission: z.number().min(1).max(5).default(2),
+  peerReviewDeadline: z
+    .string()
+    .refine((val) => !isNaN(Date.parse(val)), {
+      message: "Invalid date format for peerReviewDeadline",
+    })
+    .optional(),
+  aiEvaluationEnabled: z.boolean().default(true),
+  isPublished: z.boolean().default(true),
+});
+
+export const updateAssignmentSchema = createAssignmentSchema.partial().omit({
+  courseId: true,
+});
+
+export const submitAssignmentSchema = z.object({
+  content: z
+    .string()
+    .min(10, "Submission content must be at least 10 characters"),
+  language: z.string().trim().toLowerCase().optional(),
+});
+
+export const gradeSubmissionSchema = z.object({
+  score: z.number().min(0, "Score cannot be negative").optional(),
+  feedback: z.string().min(2, "Feedback must be at least 2 characters").optional(),
+  rubricScores: z
+    .array(
+      z.object({
+        criterion: z.string(),
+        score: z.number().min(0),
+        feedback: z.string().optional(),
+      })
+    )
+    .optional(),
+  useAiScore: z.boolean().optional(),
+});
+
+export type CreateAssignmentInput = z.infer<typeof createAssignmentSchema>;
+export type UpdateAssignmentInput = z.infer<typeof updateAssignmentSchema>;
+export type SubmitAssignmentInput = z.infer<typeof submitAssignmentSchema>;
+export type GradeSubmissionInput = z.infer<typeof gradeSubmissionSchema>;
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\assignments\submission.model.ts ===
+import mongoose, { Schema, type Document } from "mongoose";
+
+export interface ISimilarityMatch {
+  submissionId: mongoose.Types.ObjectId;
+  studentId: mongoose.Types.ObjectId;
+  score: number;
+  matchedPassages?: string[];
+}
+
+export interface ISimilarityReport {
+  highestScore: number;
+  flaggedForReview: boolean;
+  matches: ISimilarityMatch[];
+  computedAt: Date;
+}
+
+export interface IRubricScore {
+  criterion: string;
+  score: number;
+  feedback?: string;
+}
+
+export interface IAiEvaluation {
+  suggestedScore: number;
+  feedback: string;
+  rubricScores: IRubricScore[];
+  status: "suggested" | "approved" | "overridden";
+  modelUsed?: string;
+  evaluatedAt: Date;
+}
+
+export interface ISubmissionGrade {
+  score: number;
+  feedback: string;
+  rubricScores: IRubricScore[];
+  gradedBy: mongoose.Types.ObjectId;
+  gradedAt: Date;
+}
+
+export interface ISubmission extends Document {
+  assignment: mongoose.Types.ObjectId;
+  course: mongoose.Types.ObjectId;
+  student: mongoose.Types.ObjectId;
+  content: string;
+  language?: string;
+  submittedAt: Date;
+  status: "submitted" | "under_review" | "graded";
+  similarityReport?: ISimilarityReport;
+  aiEvaluation?: IAiEvaluation;
+  grade?: ISubmissionGrade;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const similarityMatchSchema = new Schema<ISimilarityMatch>(
+  {
+    submissionId: {
+      type: Schema.Types.ObjectId,
+      ref: "Submission",
+      required: true,
+    },
+    studentId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    score: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: 100,
+    },
+    matchedPassages: [
+      {
+        type: String,
+      },
+    ],
+  },
+  { _id: false }
+);
+
+const similarityReportSchema = new Schema<ISimilarityReport>(
+  {
+    highestScore: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    flaggedForReview: {
+      type: Boolean,
+      default: false,
+    },
+    matches: {
+      type: [similarityMatchSchema],
+      default: [],
+    },
+    computedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false }
+);
+
+const rubricScoreSchema = new Schema<IRubricScore>(
+  {
+    criterion: {
+      type: String,
+      required: true,
+    },
+    score: {
+      type: Number,
+      required: true,
+    },
+    feedback: {
+      type: String,
+    },
+  },
+  { _id: false }
+);
+
+const aiEvaluationSchema = new Schema<IAiEvaluation>(
+  {
+    suggestedScore: {
+      type: Number,
+      required: true,
+    },
+    feedback: {
+      type: String,
+      required: true,
+    },
+    rubricScores: {
+      type: [rubricScoreSchema],
+      default: [],
+    },
+    status: {
+      type: String,
+      enum: ["suggested", "approved", "overridden"],
+      default: "suggested",
+    },
+    modelUsed: {
+      type: String,
+    },
+    evaluatedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false }
+);
+
+const gradeSchema = new Schema<ISubmissionGrade>(
+  {
+    score: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    feedback: {
+      type: String,
+      required: true,
+    },
+    rubricScores: {
+      type: [rubricScoreSchema],
+      default: [],
+    },
+    gradedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    gradedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false }
+);
+
+const submissionSchema = new Schema<ISubmission>(
+  {
+    assignment: {
+      type: Schema.Types.ObjectId,
+      ref: "Assignment",
+      required: true,
+      index: true,
+    },
+    course: {
+      type: Schema.Types.ObjectId,
+      ref: "Course",
+      required: true,
+      index: true,
+    },
+    student: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    content: {
+      type: String,
+      required: true,
+    },
+    language: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
+    submittedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    status: {
+      type: String,
+      enum: ["submitted", "under_review", "graded"],
+      default: "submitted",
+      index: true,
+    },
+    similarityReport: {
+      type: similarityReportSchema,
+    },
+    aiEvaluation: {
+      type: aiEvaluationSchema,
+    },
+    grade: {
+      type: gradeSchema,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+submissionSchema.index({ assignment: 1, student: 1 }, { unique: true });
+submissionSchema.index({ assignment: 1, "similarityReport.flaggedForReview": 1 });
+submissionSchema.index({ course: 1, student: 1 });
+
+export const Submission = mongoose.model<ISubmission>(
+  "Submission",
+  submissionSchema
+);
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\auth\auth.model.ts ===
+import mongoose, { Schema, type Document } from "mongoose";
+
+export type UserRole = "student" | "instructor" | "admin" | "org_admin";
+
+export interface IUser extends Document {
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole;
+  organization?: mongoose.Types.ObjectId;
+  isEmailVerified: boolean;
+  isActive: boolean;
+  passwordResetToken?: string;
+  passwordResetExpires?: Date;
+}
+
+const userSchema = new Schema<IUser>(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 2,
+      maxlength: 80,
+    },
+
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+
+    password: {
+      type: String,
+      required: true,
+      select: false,
+    },
+
+    role: {
+      type: String,
+      enum: ["student", "instructor", "admin", "org_admin"],
+      default: "student",
+    },
+
+    organization: {
+      type: Schema.Types.ObjectId,
+      ref: "Organization",
+      index: true,
+    },
+
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+
+    passwordResetToken: {
+      type: String,
+      select: false,
+    },
+
+    passwordResetExpires: {
+      type: Date,
+      select: false,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+export const User = mongoose.model<IUser>("User", userSchema);
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\auth\auth.routes.ts ===
+import { Router } from "express";
+import {
+  register,
+  login,
+  logout,
+  getCurrentUser,
+  forgotPassword,
+  resetPassword,
+} from "./auth.controller";
+import {
+  registerSchema,
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from "./auth.validation";
+import { validate } from "../../middlewares/validate.middleware";
+import { authenticate } from "../../middlewares/auth.middleware";
+
+const router = Router();
+
+router.post("/register", validate(registerSchema), register);
+router.post("/login", validate(loginSchema), login);
+router.post("/logout", logout);
+router.get("/me", authenticate, getCurrentUser);
+router.post("/forgot-password", validate(forgotPasswordSchema), forgotPassword);
+router.post("/reset-password", validate(resetPasswordSchema), resetPassword);
+
+export default router;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\auth\auth.validation.ts ===
+import { z } from "zod";
+
+export const registerSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  email: z
+    .string()
+    .trim()
+    .email()
+    .transform((value) => value.toLowerCase()),
+  password: z.string().min(8).max(72),
+});
+
+export const loginSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .email()
+    .transform((value) => value.toLowerCase()),
+  password: z.string().min(1),
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .email()
+    .transform((value) => value.toLowerCase()),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, "Reset token is required"),
+  newPassword: z.string().min(8).max(72),
+});
+
+export type RegisterInput = z.infer<typeof registerSchema>;
+export type LoginInput = z.infer<typeof loginSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\certificates\certificate.model.ts ===
+import mongoose, { Schema, type Document } from "mongoose";
+
+export interface IRenewalRecord {
+  renewedAt: Date;
+  previousExpiresAt?: Date;
+  newExpiresAt: Date;
+  renewedBy: mongoose.Types.ObjectId;
+  notes?: string;
+}
+
+export interface ICertificateMetadata {
+  studentName: string;
+  courseTitle: string;
+  instructorName: string;
+  completionDate: Date;
+  gradeAverage?: number;
+}
+
+export interface ICertificate extends Document {
+  verificationId: string;
+  student: mongoose.Types.ObjectId;
+  course: mongoose.Types.ObjectId;
+  issuedAt: Date;
+  validityMonths: number;
+  expiresAt?: Date;
+  status: "active" | "expired" | "renewed" | "revoked";
+  renewalHistory: IRenewalRecord[];
+  metadata: ICertificateMetadata;
+  revokedAt?: Date;
+  revocationReason?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const renewalRecordSchema = new Schema<IRenewalRecord>(
+  {
+    renewedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    previousExpiresAt: {
+      type: Date,
+    },
+    newExpiresAt: {
+      type: Date,
+      required: true,
+    },
+    renewedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    notes: {
+      type: String,
+      trim: true,
+    },
+  },
+  { _id: false }
+);
+
+const certificateMetadataSchema = new Schema<ICertificateMetadata>(
+  {
+    studentName: { type: String, required: true },
+    courseTitle: { type: String, required: true },
+    instructorName: { type: String, required: true },
+    completionDate: { type: Date, required: true },
+    gradeAverage: { type: Number },
+  },
+  { _id: false }
+);
+
+const certificateSchema = new Schema<ICertificate>(
+  {
+    verificationId: {
+      type: String,
+      required: true,
+      unique: true,
+      uppercase: true,
+      trim: true,
+      index: true,
+    },
+    student: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    course: {
+      type: Schema.Types.ObjectId,
+      ref: "Course",
+      required: true,
+      index: true,
+    },
+    issuedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    validityMonths: {
+      type: Number,
+      default: 12, // 1 year default validity
+      min: 0,
+    },
+    expiresAt: {
+      type: Date,
+      index: true,
+    },
+    status: {
+      type: String,
+      enum: ["active", "expired", "renewed", "revoked"],
+      default: "active",
+      index: true,
+    },
+    renewalHistory: {
+      type: [renewalRecordSchema],
+      default: [],
+    },
+    metadata: {
+      type: certificateMetadataSchema,
+      required: true,
+    },
+    revokedAt: {
+      type: Date,
+    },
+    revocationReason: {
+      type: String,
+      trim: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+certificateSchema.index({ student: 1, course: 1 });
+
+export const Certificate = mongoose.model<ICertificate>(
+  "Certificate",
+  certificateSchema
+);
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\certificates\certificate.routes.ts ===
+import { Router } from "express";
+
+import {
+  issueCertificate,
+  verifyCertificate,
+  getMyCertificates,
+  getCourseCertificate,
+  renewCertificate,
+  revokeCertificate,
+} from "./certificate.controller";
+
+import { authenticate } from "../../middlewares/auth.middleware";
+import { authorize } from "../../middlewares/role.middleware";
+import { validate } from "../../middlewares/validate.middleware";
+
+import {
+  issueCertificateSchema,
+  renewCertificateSchema,
+  revokeCertificateSchema,
+} from "./certificate.validation";
+
+const router = Router();
+
+// 1. PUBLIC VERIFICATION (No Authentication Required)
+router.get("/verify/:verificationId", verifyCertificate);
+
+// Protected routes below
+router.use(authenticate);
+
+// 2. Student & Issuance routes
+router.post(
+  "/issue",
+  authorize("student", "instructor", "admin"),
+  validate(issueCertificateSchema),
+  issueCertificate
+);
+
+router.get("/my-certificates", authorize("student"), getMyCertificates);
+
+router.get("/course/:courseId", getCourseCertificate);
+
+// 3. Renewal & Revocation routes
+router.post(
+  "/:id/renew",
+  validate(renewCertificateSchema),
+  renewCertificate
+);
+
+router.post(
+  "/:id/revoke",
+  authorize("instructor", "admin"),
+  validate(revokeCertificateSchema),
+  revokeCertificate
+);
+
+export default router;
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\certificates\certificate.validation.ts ===
+import { z } from "zod";
+
+const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+
+export const issueCertificateSchema = z.object({
+  courseId: z
+    .string()
+    .regex(objectIdRegex, "Invalid course ID format"),
+  validityMonths: z.number().int().min(0).max(120).default(12),
+});
+
+export const renewCertificateSchema = z.object({
+  additionalMonths: z.number().int().min(1).max(120).default(12),
+  notes: z.string().optional(),
+});
+
+export const revokeCertificateSchema = z.object({
+  reason: z.string().min(3, "Reason must be at least 3 characters"),
+});
+
+export type IssueCertificateInput = z.infer<typeof issueCertificateSchema>;
+export type RenewCertificateInput = z.infer<typeof renewCertificateSchema>;
+export type RevokeCertificateInput = z.infer<typeof revokeCertificateSchema>;
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\courses\course.model.ts ===
+import mongoose, { Schema, type Document } from "mongoose";
+
+export interface ICourseTranslation {
+  language: string;
+  title: string;
+  description: string;
+  shortDescription?: string;
+}
+
+export interface ICourse extends Document {
+  title: string;
+  description: string;
+  shortDescription: string;
+  thumbnail?: string;
+  price: number;
+  category: string;
+  level: "beginner" | "intermediate" | "advanced";
+  language: string;
+  supportedLanguages: string[];
+  translations: ICourseTranslation[];
+  instructor: mongoose.Types.ObjectId;
+  isPublished: boolean;
+  requirements: string[];
+  learningOutcomes: string[];
+  prerequisites: mongoose.Types.ObjectId[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const courseTranslationSchema = new Schema<ICourseTranslation>(
+  {
+    language: {
+      type: String,
+      required: true,
+      trim: true,
+      lowercase: true,
+    },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    shortDescription: {
+      type: String,
+      trim: true,
+    },
+  },
+  { _id: false }
+);
+
+const courseSchema = new Schema<ICourse>(
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 5,
+      maxlength: 150,
+    },
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 20,
+    },
+    shortDescription: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 300,
+    },
+    thumbnail: {
+      type: String,
+      trim: true,
+    },
+    price: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+    },
+    category: {
+      type: String,
+      required: true,
+      trim: true,
+      index: true,
+    },
+    level: {
+      type: String,
+      enum: ["beginner", "intermediate", "advanced"],
+      default: "beginner",
+    },
+    language: {
+      type: String,
+      required: true,
+      trim: true,
+      default: "en",
+    },
+    supportedLanguages: {
+      type: [String],
+      default: ["en"],
+    },
+    translations: {
+      type: [courseTranslationSchema],
+      default: [],
+    },
+    instructor: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    isPublished: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    requirements: {
+      type: [String],
+      default: [],
+    },
+    learningOutcomes: {
+      type: [String],
+      default: [],
+    },
+    prerequisites: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Course",
+      },
+    ],
+  },
+  {
+    timestamps: true,
+  }
+);
+
+courseSchema.index({ title: "text", description: "text" });
+
+export const Course = mongoose.model<ICourse>("Course", courseSchema);
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\courses\course.routes.ts ===
+import { Router } from "express";
+import mongoose from "mongoose";
+
+import {
+  createCourse,
+  getCourses,
+  getCourseById,
+  updateCourse,
+  deleteCourse,
+  getMyCourses,
+  toggleCoursePublish,
+  addCourseTranslation,
+} from "./course.controller";
+
+import { authenticate } from "../../middlewares/auth.middleware";
+import { authorize } from "../../middlewares/role.middleware";
+import { validate } from "../../middlewares/validate.middleware";
+
+import {
+  createCourseSchema,
+  updateCourseSchema,
+  courseTranslationSchema,
+} from "./course.validation";
+
+const router = Router();
+
+// Specific routes must come before dynamic routes
+router.get(
+  "/my-courses",
+  authenticate,
+  authorize("instructor", "admin"),
+  getMyCourses
+);
+
+// Public routes
+router.get("/", getCourses);
+router.get("/:id", (req, res, next) => {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return next();
+  }
+
+  return getCourseById(req, res, next);
+});
+
+// Protected routes (instructor and admin)
+router.post(
+  "/",
+  authenticate,
+  authorize("instructor", "admin"),
+  validate(createCourseSchema),
+  createCourse
+);
+
+router.post(
+  "/:id/translations",
+  authenticate,
+  authorize("instructor", "admin"),
+  validate(courseTranslationSchema),
+  addCourseTranslation
+);
+
+router.patch(
+  "/:id/publish",
+  authenticate,
+  authorize("instructor", "admin"),
+  toggleCoursePublish
+);
+
+router.patch(
+  "/:id",
+  authenticate,
+  authorize("instructor", "admin"),
+  validate(updateCourseSchema),
+  updateCourse
+);
+
+router.delete(
+  "/:id",
+  authenticate,
+  authorize("instructor", "admin"),
+  deleteCourse
+);
+
+export default router;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\courses\course.validation.ts ===
+import { z } from "zod";
+
+const stringArraySchema = z.array(z.string().trim().min(1)).max(30);
+
+export const courseTranslationSchema = z.object({
+  language: z.string().trim().min(2).max(10),
+  title: z.string().trim().min(2).max(150),
+  description: z.string().trim().min(5),
+  shortDescription: z.string().trim().max(300).optional(),
+});
+
+export const createCourseSchema = z.object({
+  title: z.string().trim().min(5).max(150),
+  description: z.string().trim().min(20),
+  shortDescription: z.string().trim().min(5).max(300),
+  thumbnail: z.string().trim().url().optional(),
+  price: z.coerce.number().min(0).default(0),
+  category: z.string().trim().min(2).max(80),
+  level: z.enum(["beginner", "intermediate", "advanced"]).default("beginner"),
+  language: z.string().trim().min(2).max(50).default("en"),
+  supportedLanguages: z.array(z.string().trim().min(2).max(10)).default(["en"]),
+  translations: z.array(courseTranslationSchema).default([]),
+  requirements: stringArraySchema.default([]),
+  learningOutcomes: stringArraySchema.default([]),
+  prerequisites: z
+    .array(z.string().regex(/^[a-fA-F0-9]{24}$/, "Invalid prerequisite course ID"))
+    .default([]),
+});
+
+export const updateCourseSchema = createCourseSchema.partial();
+
+export const courseQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(10),
+  search: z.string().trim().optional(),
+  category: z.string().trim().optional(),
+  level: z.enum(["beginner", "intermediate", "advanced"]).optional(),
+  lang: z.string().trim().optional(),
+  sort: z.enum(["newest", "oldest", "price-low", "price-high"]).default("newest"),
+});
+
+export type CreateCourseInput = z.infer<typeof createCourseSchema>;
+export type UpdateCourseInput = z.infer<typeof updateCourseSchema>;
+export type CourseQueryInput = z.infer<typeof courseQuerySchema>;
+export type CourseTranslationInput = z.infer<typeof courseTranslationSchema>;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\courseVersions\courseVersion.model.ts ===
+import mongoose, { Schema, type Document, Types } from "mongoose";
+
+export interface ICourseVersionLessonSnapshot {
+  lessonId: Types.ObjectId;
+  title: string;
+  description: string;
+  videoUrl?: string;
+  duration: number;
+  order: number;
+  dripType?: string;
+  transcript?: string;
+  captions?: Array<{
+    language: string;
+    label: string;
+    url: string;
+  }>;
+}
+
+export interface ICourseVersionSnapshot {
+  title: string;
+  description: string;
+  shortDescription?: string;
+  category: string;
+  level: string;
+  price: number;
+  language?: string;
+  requirements: string[];
+  learningOutcomes: string[];
+  lessons: ICourseVersionLessonSnapshot[];
+}
+
+export interface ICourseVersion extends Document {
+  course: Types.ObjectId;
+  version: string;
+  versionNumber: number;
+  changelog: string;
+  createdBy: Types.ObjectId;
+  isCurrent: boolean;
+  snapshot: ICourseVersionSnapshot;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const lessonSnapshotSchema = new Schema<ICourseVersionLessonSnapshot>(
+  {
+    lessonId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+    },
+    title: {
+      type: String,
+      required: true,
+    },
+    description: {
+      type: String,
+      required: true,
+    },
+    videoUrl: String,
+    duration: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    order: {
+      type: Number,
+      required: true,
+    },
+    dripType: String,
+    transcript: String,
+    captions: [
+      {
+        language: String,
+        label: String,
+        url: String,
+      },
+    ],
+  },
+  { _id: false }
+);
+
+const courseSnapshotSchema = new Schema<ICourseVersionSnapshot>(
+  {
+    title: {
+      type: String,
+      required: true,
+    },
+    description: {
+      type: String,
+      required: true,
+    },
+    shortDescription: String,
+    category: {
+      type: String,
+      required: true,
+    },
+    level: {
+      type: String,
+      required: true,
+    },
+    price: {
+      type: Number,
+      required: true,
+    },
+    language: String,
+    requirements: [String],
+    learningOutcomes: [String],
+    lessons: [lessonSnapshotSchema],
+  },
+  { _id: false }
+);
+
+const courseVersionSchema = new Schema<ICourseVersion>(
+  {
+    course: {
+      type: Schema.Types.ObjectId,
+      ref: "Course",
+      required: true,
+      index: true,
+    },
+    version: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    versionNumber: {
+      type: Number,
+      required: true,
+    },
+    changelog: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 3,
+      maxlength: 2000,
+    },
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    isCurrent: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+    snapshot: {
+      type: courseSnapshotSchema,
+      required: true,
+    },
+  },
+  { timestamps: true }
+);
+
+courseVersionSchema.index({ course: 1, version: 1 }, { unique: true });
+courseVersionSchema.index({ course: 1, versionNumber: -1 });
+
+export const CourseVersion = mongoose.model<ICourseVersion>(
+  "CourseVersion",
+  courseVersionSchema
+);
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\courseVersions\courseVersion.routes.ts ===
+import { Router } from "express";
+
+import {
+  createCourseVersion,
+  getCourseVersions,
+  getCourseVersionDetail,
+  compareCourseVersions,
+} from "./courseVersion.controller";
+
+import { authenticate } from "../../middlewares/auth.middleware";
+import { authorize } from "../../middlewares/role.middleware";
+import { validate } from "../../middlewares/validate.middleware";
+import { createCourseVersionSchema } from "./courseVersion.validation";
+
+const router = Router();
+
+router.use(authenticate);
+
+// List all versions of a course
+router.get("/course/:courseId", getCourseVersions);
+
+// Create new version snapshot of a course
+router.post(
+  "/course/:courseId",
+  authorize("instructor", "admin"),
+  validate(createCourseVersionSchema),
+  createCourseVersion
+);
+
+// Compare two versions
+router.get("/compare/:versionId1/:versionId2", compareCourseVersions);
+
+// Get single version details
+router.get("/:versionId", getCourseVersionDetail);
+
+export default router;
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\courseVersions\courseVersion.validation.ts ===
+import { z } from "zod";
+
+export const createCourseVersionSchema = z.object({
+  version: z.string().trim().min(1).max(20),
+  changelog: z.string().trim().min(3).max(2000),
+});
+
+export type CreateCourseVersionInput = z.infer<
+  typeof createCourseVersionSchema
+>;
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\discussions\discussion.model.ts ===
+import mongoose, { Schema, type Document, Types } from "mongoose";
+
+export interface IDiscussionReport {
+  reportedBy: Types.ObjectId;
+  reason: string;
+  createdAt: Date;
+}
+
+export interface IDiscussion extends Document {
+  course: Types.ObjectId;
+  lesson: Types.ObjectId;
+  user: Types.ObjectId;
+  content: string;
+  parentDiscussionId?: Types.ObjectId | null;
+  isPinned: boolean;
+  isInstructorReply: boolean;
+  status: "active" | "flagged" | "hidden";
+  reports: IDiscussionReport[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const discussionReportSchema = new Schema<IDiscussionReport>(
+  {
+    reportedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    reason: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 300,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false }
+);
+
+const discussionSchema = new Schema<IDiscussion>(
+  {
+    course: {
+      type: Schema.Types.ObjectId,
+      ref: "Course",
+      required: true,
+      index: true,
+    },
+    lesson: {
+      type: Schema.Types.ObjectId,
+      ref: "Lesson",
+      required: true,
+      index: true,
+    },
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    content: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 2,
+      maxlength: 2000,
+    },
+    parentDiscussionId: {
+      type: Schema.Types.ObjectId,
+      ref: "Discussion",
+      default: null,
+      index: true,
+    },
+    isPinned: {
+      type: Boolean,
+      default: false,
+    },
+    isInstructorReply: {
+      type: Boolean,
+      default: false,
+    },
+    status: {
+      type: String,
+      enum: ["active", "flagged", "hidden"],
+      default: "active",
+      index: true,
+    },
+    reports: {
+      type: [discussionReportSchema],
+      default: [],
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+discussionSchema.index({ lesson: 1, parentDiscussionId: 1, isPinned: -1, createdAt: -1 });
+discussionSchema.index({ course: 1, status: 1 });
+
+export const Discussion = mongoose.model<IDiscussion>(
+  "Discussion",
+  discussionSchema
+);
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\discussions\discussion.routes.ts ===
+import { Router } from "express";
+
+import {
+  createQuestion,
+  replyToQuestion,
+  getLessonDiscussions,
+  updateDiscussion,
+  deleteDiscussion,
+  reportDiscussion,
+  moderateDiscussion,
+  getReportedDiscussions,
+} from "./discussion.controller";
+
+import { authenticate } from "../../middlewares/auth.middleware";
+import { authorize } from "../../middlewares/role.middleware";
+import { validate } from "../../middlewares/validate.middleware";
+
+import {
+  createDiscussionSchema,
+  replyDiscussionSchema,
+  updateDiscussionSchema,
+  reportDiscussionSchema,
+  moderateDiscussionSchema,
+} from "./discussion.validation";
+
+const router = Router();
+
+router.use(authenticate);
+
+// Specific routes
+router.get("/courses/:courseId/flagged", getReportedDiscussions);
+
+// Lesson discussion routes
+router.get("/lessons/:lessonId", getLessonDiscussions);
+router.post(
+  "/lessons/:lessonId",
+  validate(createDiscussionSchema),
+  createQuestion
+);
+
+// Individual discussion operations
+router.post(
+  "/:discussionId/reply",
+  validate(replyDiscussionSchema),
+  replyToQuestion
+);
+
+router.patch(
+  "/:discussionId",
+  validate(updateDiscussionSchema),
+  updateDiscussion
+);
+
+router.delete("/:discussionId", deleteDiscussion);
+
+router.post(
+  "/:discussionId/report",
+  validate(reportDiscussionSchema),
+  reportDiscussion
+);
+
+router.patch(
+  "/:discussionId/moderate",
+  validate(moderateDiscussionSchema),
+  moderateDiscussion
+);
+
+export default router;
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\discussions\discussion.validation.ts ===
+import { z } from "zod";
+
+export const createDiscussionSchema = z.object({
+  content: z.string().trim().min(2).max(2000),
+});
+
+export const replyDiscussionSchema = z.object({
+  content: z.string().trim().min(2).max(2000),
+});
+
+export const updateDiscussionSchema = z.object({
+  content: z.string().trim().min(2).max(2000),
+});
+
+export const reportDiscussionSchema = z.object({
+  reason: z.string().trim().min(3).max(300),
+});
+
+export const moderateDiscussionSchema = z.object({
+  status: z.enum(["active", "flagged", "hidden"]).optional(),
+  isPinned: z.boolean().optional(),
+});
+
+export const discussionQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export type CreateDiscussionInput = z.infer<typeof createDiscussionSchema>;
+export type ReplyDiscussionInput = z.infer<typeof replyDiscussionSchema>;
+export type UpdateDiscussionInput = z.infer<typeof updateDiscussionSchema>;
+export type ReportDiscussionInput = z.infer<typeof reportDiscussionSchema>;
+export type ModerateDiscussionInput = z.infer<typeof moderateDiscussionSchema>;
+export type DiscussionQueryInput = z.infer<typeof discussionQuerySchema>;
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\enrollments\enrollment.model.ts ===
+import { Schema, model, Types, Document } from "mongoose";
+
+export type EnrollmentStatus = "active" | "pending" | "cancelled";
+
+export type PaymentStatus = "free" | "pending" | "paid" | "failed";
+
+export interface IEnrollment extends Document {
+student: Types.ObjectId;
+course: Types.ObjectId;
+status: EnrollmentStatus;
+paymentStatus: PaymentStatus;
+amount: number;
+paymentId?: string;
+enrolledAt?: Date;
+}
+
+const enrollmentSchema = new Schema<IEnrollment>(
+{
+student: {
+type: Schema.Types.ObjectId,
+ref: "User",
+required: true,
+},
+course: {
+type: Schema.Types.ObjectId,
+ref: "Course",
+required: true,
+},
+status: {
+type: String,
+enum: ["active", "pending", "cancelled"],
+default: "pending",
+required: true,
+},
+paymentStatus: {
+type: String,
+enum: ["free", "pending", "paid", "failed"],
+required: true,
+},
+amount: {
+type: Number,
+required: true,
+min: 0,
+},
+paymentId: {
+type: String,
+trim: true,
+},
+enrolledAt: {
+type: Date,
+},
+},
+{
+timestamps: true,
+}
+);
+
+enrollmentSchema.index(
+{ student: 1, course: 1 },
+{ unique: true }
+);
+
+const Enrollment = model<IEnrollment>(
+"Enrollment",
+enrollmentSchema
+);
+
+export default Enrollment;
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\enrollments\enrollment.routes.ts ===
+import { Router } from "express";
+
+import {
+  enrollInCourse,
+  getMyEnrollments,
+} from "./enrollment.controller";
+
+import { authenticate } from "../../middlewares/auth.middleware";
+
+const router = Router();
+
+router.post("/:courseId", authenticate, enrollInCourse);
+
+router.get("/my-enrollments", authenticate, getMyEnrollments);
+
+export default router;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\enrollments\enrollment.validation.ts ===
+import { z } from "zod";
+
+export const enrollCourseSchema = z.object({
+params: z.object({
+courseId: z
+.string()
+.regex(/^[a-fA-F0-9]{24}$/, "Invalid course ID"),
+}),
+});
+
+export type EnrollCourseInput = z.infer<typeof enrollCourseSchema>;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\guardians\guardianAccess.model.ts ===
+import mongoose, { Schema, type Document } from "mongoose";
+
+export interface IGuardianPermissions {
+  viewCourses: boolean;
+  viewProgress: boolean;
+  viewCertificates: boolean;
+  viewAttendanceTime: boolean;
+}
+
+export interface IGuardianAccess extends Document {
+  student: mongoose.Types.ObjectId;
+  guardianEmail: string;
+  guardianUser?: mongoose.Types.ObjectId;
+  relationship: "parent" | "guardian" | "sponsor" | "mentor";
+  inviteToken: string;
+  status: "pending" | "accepted" | "rejected" | "revoked";
+  permissions: IGuardianPermissions;
+  invitedAt: Date;
+  acceptedAt?: Date;
+  revokedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const guardianPermissionsSchema = new Schema<IGuardianPermissions>(
+  {
+    viewCourses: { type: Boolean, default: true },
+    viewProgress: { type: Boolean, default: true },
+    viewCertificates: { type: Boolean, default: true },
+    viewAttendanceTime: { type: Boolean, default: true },
+  },
+  { _id: false }
+);
+
+const guardianAccessSchema = new Schema<IGuardianAccess>(
+  {
+    student: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    guardianEmail: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true,
+      index: true,
+    },
+    guardianUser: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      index: true,
+    },
+    relationship: {
+      type: String,
+      enum: ["parent", "guardian", "sponsor", "mentor"],
+      default: "parent",
+      required: true,
+    },
+    inviteToken: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+    },
+    status: {
+      type: String,
+      enum: ["pending", "accepted", "rejected", "revoked"],
+      default: "pending",
+      index: true,
+    },
+    permissions: {
+      type: guardianPermissionsSchema,
+      default: () => ({}),
+    },
+    invitedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    acceptedAt: {
+      type: Date,
+    },
+    revokedAt: {
+      type: Date,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+guardianAccessSchema.index({ student: 1, guardianEmail: 1 });
+guardianAccessSchema.index({ guardianUser: 1, status: 1 });
+
+export const GuardianAccess = mongoose.model<IGuardianAccess>(
+  "GuardianAccess",
+  guardianAccessSchema
+);
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\guardians\guardianAccess.routes.ts ===
+import { Router } from "express";
+
+import {
+  inviteGuardian,
+  acceptGuardianInvite,
+  getMyGuardians,
+  updateGuardianPermissions,
+  revokeGuardianAccess,
+  getGuardianStudents,
+  getStudentProgressForGuardian,
+} from "./guardianAccess.controller";
+
+import { authenticate } from "../../middlewares/auth.middleware";
+import { validate } from "../../middlewares/validate.middleware";
+import {
+  inviteGuardianSchema,
+  updateGuardianPermissionsSchema,
+} from "./guardianAccess.validation";
+
+const router = Router();
+
+router.use(authenticate);
+
+// Student invitation and management routes
+router.post("/invite", validate(inviteGuardianSchema), inviteGuardian);
+router.get("/my-guardians", getMyGuardians);
+router.patch(
+  "/:id/permissions",
+  validate(updateGuardianPermissionsSchema),
+  updateGuardianPermissions
+);
+router.post("/:id/revoke", revokeGuardianAccess);
+router.delete("/:id", revokeGuardianAccess);
+
+// Guardian acceptance and progress view routes
+router.post("/accept/:inviteToken", acceptGuardianInvite);
+router.get("/students", getGuardianStudents);
+router.get("/students/:studentId/progress", getStudentProgressForGuardian);
+
+export default router;
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\guardians\guardianAccess.validation.ts ===
+import { z } from "zod";
+
+const permissionsSchema = z.object({
+  viewCourses: z.boolean().optional(),
+  viewProgress: z.boolean().optional(),
+  viewCertificates: z.boolean().optional(),
+  viewAttendanceTime: z.boolean().optional(),
+});
+
+export const inviteGuardianSchema = z.object({
+  guardianEmail: z.string().email("Invalid guardian email address"),
+  relationship: z
+    .enum(["parent", "guardian", "sponsor", "mentor"])
+    .default("parent"),
+  permissions: permissionsSchema.optional(),
+});
+
+export const updateGuardianPermissionsSchema = z.object({
+  permissions: z.object({
+    viewCourses: z.boolean().optional(),
+    viewProgress: z.boolean().optional(),
+    viewCertificates: z.boolean().optional(),
+    viewAttendanceTime: z.boolean().optional(),
+  }),
+});
+
+export type InviteGuardianInput = z.infer<typeof inviteGuardianSchema>;
+export type UpdateGuardianPermissionsInput = z.infer<
+  typeof updateGuardianPermissionsSchema
+>;
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\instructors\instructor.routes.ts ===
+import { Router } from "express";
+
+import {
+  authenticate,
+  authorize,
+} from "../../middlewares/auth.middleware";
+
+import {
+  getInstructorDashboard,
+  getCourseStudents,
+} from "./instructor.controller";
+import {
+  getLiveOverviewAnalytics,
+  getCourseLiveAnalytics,
+} from "./instructor.analytics.controller";
+
+const router = Router();
+
+// GET /api/instructors/dashboard
+router.get(
+  "/dashboard",
+  authenticate,
+  authorize("instructor", "admin"),
+  getInstructorDashboard
+);
+
+// GET /api/instructors/analytics/overview
+router.get(
+  "/analytics/overview",
+  authenticate,
+  authorize("instructor", "admin"),
+  getLiveOverviewAnalytics
+);
+
+// GET /api/instructors/analytics/courses/:courseId
+router.get(
+  "/analytics/courses/:courseId",
+  authenticate,
+  authorize("instructor", "admin"),
+  getCourseLiveAnalytics
+);
+
+// GET /api/instructors/courses/:courseId/students
+router.get(
+  "/courses/:courseId/students",
+  authenticate,
+  authorize("instructor", "admin"),
+  getCourseStudents
+);
+
+export default router;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\learningPaths\learningPath.model.ts ===
+import mongoose, { Schema, type Document, Types } from "mongoose";
+
+export interface ILearningPathCourse {
+  course: Types.ObjectId;
+  order: number;
+  prerequisites: Types.ObjectId[];
+}
+
+export interface ILearningPath extends Document {
+  title: string;
+  description: string;
+  thumbnail?: string;
+  instructor: Types.ObjectId;
+  category: string;
+  level: "beginner" | "intermediate" | "advanced";
+  courses: ILearningPathCourse[];
+  enrolledStudents: Types.ObjectId[];
+  isPublished: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const learningPathCourseSchema = new Schema<ILearningPathCourse>(
+  {
+    course: {
+      type: Schema.Types.ObjectId,
+      ref: "Course",
+      required: true,
+    },
+    order: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+    prerequisites: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Course",
+      },
+    ],
+  },
+  { _id: false }
+);
+
+const learningPathSchema = new Schema<ILearningPath>(
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 3,
+      maxlength: 150,
+    },
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 10,
+    },
+    thumbnail: {
+      type: String,
+      trim: true,
+    },
+    instructor: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    category: {
+      type: String,
+      required: true,
+      trim: true,
+      index: true,
+    },
+    level: {
+      type: String,
+      enum: ["beginner", "intermediate", "advanced"],
+      default: "beginner",
+    },
+    courses: {
+      type: [learningPathCourseSchema],
+      default: [],
+    },
+    enrolledStudents: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    isPublished: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+learningPathSchema.index({ title: "text", description: "text" });
+
+export const LearningPath = mongoose.model<ILearningPath>(
+  "LearningPath",
+  learningPathSchema
+);
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\learningPaths\learningPath.routes.ts ===
+import { Router } from "express";
+import mongoose from "mongoose";
+
+import {
+  createLearningPath,
+  getLearningPaths,
+  getLearningPathById,
+  updateLearningPath,
+  deleteLearningPath,
+  toggleLearningPathPublish,
+  getMyCreatedLearningPaths,
+  enrollInLearningPath,
+  getLearningPathProgress,
+  getMyLearningPaths,
+  checkLearningPathCourseAccess,
+} from "./learningPath.controller";
+
+import { authenticate } from "../../middlewares/auth.middleware";
+import { authorize } from "../../middlewares/role.middleware";
+import { validate } from "../../middlewares/validate.middleware";
+
+import {
+  createLearningPathSchema,
+  updateLearningPathSchema,
+} from "./learningPath.validation";
+
+const router = Router();
+
+// Student-specific and Instructor-specific fixed routes (before /:id)
+router.get("/student/my-paths", authenticate, getMyLearningPaths);
+router.get(
+  "/instructor/my-paths",
+  authenticate,
+  authorize("instructor", "admin"),
+  getMyCreatedLearningPaths
+);
+
+// Public list
+router.get("/", getLearningPaths);
+
+// Public single path details
+router.get("/:id", (req, res, next) => {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return next();
+  }
+  return getLearningPathById(req, res, next);
+});
+
+// Student path actions
+router.post("/:id/enroll", authenticate, enrollInLearningPath);
+router.get("/:id/progress", authenticate, getLearningPathProgress);
+router.get(
+  "/:id/courses/:courseId/access",
+  authenticate,
+  checkLearningPathCourseAccess
+);
+
+// Instructor / Admin management routes
+router.post(
+  "/",
+  authenticate,
+  authorize("instructor", "admin"),
+  validate(createLearningPathSchema),
+  createLearningPath
+);
+
+router.patch(
+  "/:id/publish",
+  authenticate,
+  authorize("instructor", "admin"),
+  toggleLearningPathPublish
+);
+
+router.patch(
+  "/:id",
+  authenticate,
+  authorize("instructor", "admin"),
+  validate(updateLearningPathSchema),
+  updateLearningPath
+);
+
+router.delete(
+  "/:id",
+  authenticate,
+  authorize("instructor", "admin"),
+  deleteLearningPath
+);
+
+export default router;
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\learningPaths\learningPath.validation.ts ===
+import { z } from "zod";
+
+const objectIdRegex = /^[a-fA-F0-9]{24}$/;
+
+export const learningPathCourseSchema = z.object({
+  course: z.string().regex(objectIdRegex, "Invalid course ID"),
+  order: z.coerce.number().int().min(1),
+  prerequisites: z
+    .array(z.string().regex(objectIdRegex, "Invalid prerequisite course ID"))
+    .default([]),
+});
+
+export const createLearningPathSchema = z.object({
+  title: z.string().trim().min(3).max(150),
+  description: z.string().trim().min(10),
+  thumbnail: z.string().trim().url().optional(),
+  category: z.string().trim().min(2).max(80),
+  level: z.enum(["beginner", "intermediate", "advanced"]).default("beginner"),
+  courses: z.array(learningPathCourseSchema).default([]),
+});
+
+export const updateLearningPathSchema = createLearningPathSchema.partial();
+
+export const learningPathQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(10),
+  search: z.string().trim().optional(),
+  category: z.string().trim().optional(),
+  level: z.enum(["beginner", "intermediate", "advanced"]).optional(),
+  sort: z.enum(["newest", "oldest", "title"]).default("newest"),
+});
+
+export type CreateLearningPathInput = z.infer<typeof createLearningPathSchema>;
+export type UpdateLearningPathInput = z.infer<typeof updateLearningPathSchema>;
+export type LearningPathQueryInput = z.infer<typeof learningPathQuerySchema>;
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\learningTime\learningSession.model.ts ===
+import mongoose, { Schema, type Document, Types } from "mongoose";
+
+export interface ILearningSession extends Document {
+  student: Types.ObjectId;
+  course: Types.ObjectId;
+  lesson: Types.ObjectId;
+  sessionDate: string; // Formatted YYYY-MM-DD
+  durationSeconds: number;
+  lastHeartbeatAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const learningSessionSchema = new Schema<ILearningSession>(
+  {
+    student: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    course: {
+      type: Schema.Types.ObjectId,
+      ref: "Course",
+      required: true,
+      index: true,
+    },
+    lesson: {
+      type: Schema.Types.ObjectId,
+      ref: "Lesson",
+      required: true,
+      index: true,
+    },
+    sessionDate: {
+      type: String,
+      required: true,
+      index: true,
+    },
+    durationSeconds: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+    },
+    lastHeartbeatAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+learningSessionSchema.index(
+  { student: 1, course: 1, lesson: 1, sessionDate: 1 },
+  { unique: true }
+);
+
+learningSessionSchema.index({ course: 1, sessionDate: 1 });
+learningSessionSchema.index({ student: 1, sessionDate: 1 });
+
+export const LearningSession = mongoose.model<ILearningSession>(
+  "LearningSession",
+  learningSessionSchema
+);
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\learningTime\learningTime.routes.ts ===
+import { Router } from "express";
+
+import {
+  recordHeartbeat,
+  getStudentTimeAnalytics,
+  getCourseTimeAnalytics,
+} from "./learningTime.controller";
+
+import { authenticate } from "../../middlewares/auth.middleware";
+import { validate } from "../../middlewares/validate.middleware";
+import { heartbeatSchema } from "./learningTime.validation";
+
+const router = Router();
+
+router.use(authenticate);
+
+// Student heartbeat ping during active lesson learning
+router.post(
+  "/heartbeat",
+  validate(heartbeatSchema),
+  recordHeartbeat
+);
+
+// Student personal time analytics
+router.get("/student/summary", getStudentTimeAnalytics);
+
+// Instructor / Admin course analytics
+router.get("/courses/:courseId", getCourseTimeAnalytics);
+
+export default router;
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\learningTime\learningTime.validation.ts ===
+import { z } from "zod";
+
+const objectIdRegex = /^[a-fA-F0-9]{24}$/;
+
+export const heartbeatSchema = z.object({
+  courseId: z.string().regex(objectIdRegex, "Invalid course ID"),
+  lessonId: z.string().regex(objectIdRegex, "Invalid lesson ID"),
+  durationSeconds: z.coerce.number().int().min(1).max(120), // Max 120s per ping prevents idle time!
+});
+
+export const timeAnalyticsQuerySchema = z.object({
+  days: z.coerce.number().int().min(1).max(365).default(30),
+});
+
+export type HeartbeatInput = z.infer<typeof heartbeatSchema>;
+export type TimeAnalyticsQueryInput = z.infer<typeof timeAnalyticsQuerySchema>;
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\lessons\lesson.model.ts ===
+import { Schema, model, Types, Document } from "mongoose";
+
+export type DripType = "none" | "date" | "enrollment_days";
+
+export interface ILessonTranslation {
+  language: string;
+  title: string;
+  description: string;
+  transcript?: string;
+}
+
+export interface ILessonCaption {
+  language: string;
+  label: string;
+  url: string;
+  isDefault?: boolean;
+}
+
+export interface ILessonAccessibility {
+  estimatedReadingTimeMinutes?: number;
+  screenReaderNotes?: string;
+  hasHighContrastSupport?: boolean;
+}
+
+export interface ILesson extends Document {
+  course: Types.ObjectId;
+  title: string;
+  description: string;
+  videoUrl?: string;
+  duration: number;
+  order: number;
+  isPublished: boolean;
+  dripType: DripType;
+  unlockDate?: Date;
+  unlockAfterDays?: number;
+  transcript?: string;
+  audioDescriptionUrl?: string;
+  captions: ILessonCaption[];
+  accessibility?: ILessonAccessibility;
+  translations: ILessonTranslation[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const lessonCaptionSchema = new Schema<ILessonCaption>(
+  {
+    language: {
+      type: String,
+      required: true,
+      trim: true,
+      lowercase: true,
+    },
+    label: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    url: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    isDefault: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { _id: false }
+);
+
+const lessonAccessibilitySchema = new Schema<ILessonAccessibility>(
+  {
+    estimatedReadingTimeMinutes: {
+      type: Number,
+      min: 0,
+    },
+    screenReaderNotes: {
+      type: String,
+      trim: true,
+    },
+    hasHighContrastSupport: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  { _id: false }
+);
+
+const lessonTranslationSchema = new Schema<ILessonTranslation>(
+  {
+    language: {
+      type: String,
+      required: true,
+      trim: true,
+      lowercase: true,
+    },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    transcript: {
+      type: String,
+      trim: true,
+    },
+  },
+  { _id: false }
+);
+
+const lessonSchema = new Schema<ILesson>(
+  {
+    course: {
+      type: Schema.Types.ObjectId,
+      ref: "Course",
+      required: true,
+      index: true,
+    },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 150,
+    },
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    videoUrl: {
+      type: String,
+      trim: true,
+    },
+    duration: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    order: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+    isPublished: {
+      type: Boolean,
+      default: false,
+    },
+    dripType: {
+      type: String,
+      enum: ["none", "date", "enrollment_days"],
+      default: "none",
+    },
+    unlockDate: {
+      type: Date,
+    },
+    unlockAfterDays: {
+      type: Number,
+      min: 0,
+    },
+    transcript: {
+      type: String,
+      trim: true,
+    },
+    audioDescriptionUrl: {
+      type: String,
+      trim: true,
+    },
+    captions: {
+      type: [lessonCaptionSchema],
+      default: [],
+    },
+    accessibility: {
+      type: lessonAccessibilitySchema,
+      default: () => ({ hasHighContrastSupport: true }),
+    },
+    translations: {
+      type: [lessonTranslationSchema],
+      default: [],
+    },
+  },
+  { timestamps: true }
+);
+
+lessonSchema.index({ course: 1, order: 1 }, { unique: true });
+
+const Lesson = model<ILesson>("Lesson", lessonSchema);
+
+export default Lesson;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\lessons\lesson.routes.ts ===
+import { Router } from "express";
+
+import {
+  createLesson,
+  getCourseLessons,
+  updateLesson,
+  deleteLesson,
+  reorderLessons,
+  toggleLessonPublish,
+  addLessonTranslation,
+  getAccessibleLessonContext,
+  getCourseAccessibilityAudit,
+} from "./lesson.controller";
+
+import { authenticate } from "../../middlewares/auth.middleware";
+import { authorize } from "../../middlewares/role.middleware";
+import { validate } from "../../middlewares/validate.middleware";
+import {
+  createLessonSchema,
+  updateLessonSchema,
+  lessonTranslationSchema,
+} from "./lesson.validation";
+
+const router = Router();
+
+// Accessibility audit for a course (Public or authenticated)
+router.get("/courses/:courseId/accessibility-audit", getCourseAccessibilityAudit);
+
+// Accessible lesson context (Screen-reader metadata, keyboard shortcuts, captions & transcript)
+router.get("/:lessonId/accessible-context", authenticate, getAccessibleLessonContext);
+
+// Create a lesson â€” Instructor / Admin required
+router.post(
+  "/:courseId",
+  authenticate,
+  authorize("instructor", "admin"),
+  validate(createLessonSchema),
+  createLesson
+);
+
+// Get lessons for a course (enrolled student / instructor / admin)
+router.get("/course/:courseId", authenticate, getCourseLessons);
+
+// Update a lesson â€” Instructor / Admin required
+router.patch(
+  "/:lessonId",
+  authenticate,
+  authorize("instructor", "admin"),
+  validate(updateLessonSchema),
+  updateLesson
+);
+
+// Add translation to lesson â€” Instructor / Admin required
+router.post(
+  "/:lessonId/translations",
+  authenticate,
+  authorize("instructor", "admin"),
+  validate(lessonTranslationSchema),
+  addLessonTranslation
+);
+
+// Delete a lesson â€” Instructor / Admin required
+router.delete(
+  "/:lessonId",
+  authenticate,
+  authorize("instructor", "admin"),
+  deleteLesson
+);
+
+// Reorder lessons â€” Instructor / Admin required
+router.patch(
+  "/course/:courseId/reorder",
+  authenticate,
+  authorize("instructor", "admin"),
+  reorderLessons
+);
+
+router.patch(
+  "/:lessonId/publish",
+  authenticate,
+  authorize("instructor", "admin"),
+  toggleLessonPublish
+);
+
+export default router;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\lessons\lesson.validation.ts ===
+import { z } from "zod";
+
+export const lessonCaptionSchema = z.object({
+  language: z.string().trim().min(2).max(10),
+  label: z.string().trim().min(1).max(50),
+  url: z.string().trim().url(),
+  isDefault: z.boolean().default(false),
+});
+
+export const lessonAccessibilitySchema = z.object({
+  estimatedReadingTimeMinutes: z.coerce.number().min(0).optional(),
+  screenReaderNotes: z.string().trim().optional(),
+  hasHighContrastSupport: z.boolean().default(true),
+});
+
+export const lessonTranslationSchema = z.object({
+  language: z.string().trim().min(2).max(10),
+  title: z.string().trim().min(2).max(150),
+  description: z.string().trim().min(1),
+  transcript: z.string().trim().optional(),
+});
+
+export const createLessonSchema = z.object({
+  title: z.string().trim().min(3).max(150),
+  description: z.string().trim().min(1),
+  videoUrl: z.string().url().optional(),
+  duration: z.coerce.number().min(0),
+  order: z.coerce.number().int().min(1),
+  dripType: z.enum(["none", "date", "enrollment_days"]).default("none"),
+  unlockDate: z.coerce.date().optional(),
+  unlockAfterDays: z.coerce.number().int().min(0).optional(),
+  transcript: z.string().trim().optional(),
+  audioDescriptionUrl: z.string().trim().url().optional(),
+  captions: z.array(lessonCaptionSchema).default([]),
+  accessibility: lessonAccessibilitySchema.optional(),
+  translations: z.array(lessonTranslationSchema).default([]),
+});
+
+export const updateLessonSchema = createLessonSchema.partial().extend({
+  isPublished: z.boolean().optional(),
+});
+
+export type CreateLessonInput = z.infer<typeof createLessonSchema>;
+export type UpdateLessonInput = z.infer<typeof updateLessonSchema>;
+export type LessonTranslationInput = z.infer<typeof lessonTranslationSchema>;
+export type LessonCaptionInput = z.infer<typeof lessonCaptionSchema>;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\organizations\organization.model.ts ===
+import mongoose, { Schema, type Document } from "mongoose";
+
+export interface IOrganizationSettings {
+  allowOpenRegistration: boolean;
+  requireDomainMatch: boolean;
+  maxStudents: number;
+  features: {
+    analytics: boolean;
+    certificates: boolean;
+    codeReview: boolean;
+  };
+}
+
+export interface IOrganization extends Document {
+  name: string;
+  slug: string;
+  code: string;
+  domain?: string;
+  description?: string;
+  website?: string;
+  logo?: string;
+  adminUsers: mongoose.Types.ObjectId[];
+  instructors: mongoose.Types.ObjectId[];
+  students: mongoose.Types.ObjectId[];
+  courses: mongoose.Types.ObjectId[];
+  settings: IOrganizationSettings;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const organizationSettingsSchema = new Schema<IOrganizationSettings>(
+  {
+    allowOpenRegistration: {
+      type: Boolean,
+      default: false,
+    },
+    requireDomainMatch: {
+      type: Boolean,
+      default: false,
+    },
+    maxStudents: {
+      type: Number,
+      default: 500,
+      min: 1,
+    },
+    features: {
+      analytics: { type: Boolean, default: true },
+      certificates: { type: Boolean, default: true },
+      codeReview: { type: Boolean, default: true },
+    },
+  },
+  { _id: false }
+);
+
+const organizationSchema = new Schema<IOrganization>(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 2,
+      maxlength: 120,
+    },
+    slug: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      index: true,
+    },
+    code: {
+      type: String,
+      required: true,
+      unique: true,
+      uppercase: true,
+      trim: true,
+      index: true,
+    },
+    domain: {
+      type: String,
+      lowercase: true,
+      trim: true,
+      index: true,
+    },
+    description: {
+      type: String,
+      trim: true,
+    },
+    website: {
+      type: String,
+      trim: true,
+    },
+    logo: {
+      type: String,
+      trim: true,
+    },
+    adminUsers: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        index: true,
+      },
+    ],
+    instructors: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        index: true,
+      },
+    ],
+    students: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        index: true,
+      },
+    ],
+    courses: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Course",
+        index: true,
+      },
+    ],
+    settings: {
+      type: organizationSettingsSchema,
+      default: () => ({}),
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+export const Organization = mongoose.model<IOrganization>(
+  "Organization",
+  organizationSchema
+);
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\organizations\organization.routes.ts ===
+import { Router } from "express";
+
+import {
+  createOrganization,
+  getOrganizations,
+  getOrganizationById,
+  updateOrganization,
+  addMember,
+  removeMember,
+  assignCourse,
+  removeCourse,
+  getOrganizationMembers,
+  bulkEnrollStudents,
+  getOrganizationAnalytics,
+} from "./organization.controller";
+
+import { authenticate } from "../../middlewares/auth.middleware";
+import { authorize } from "../../middlewares/role.middleware";
+import { validate } from "../../middlewares/validate.middleware";
+import { enforceTenantIsolation } from "../../middlewares/tenantIsolation.middleware";
+
+import {
+  createOrganizationSchema,
+  updateOrganizationSchema,
+  addMemberSchema,
+  assignCourseSchema,
+  bulkEnrollSchema,
+} from "./organization.validation";
+
+const router = Router();
+
+router.use(authenticate);
+
+// System Admin: Create new organization
+router.post(
+  "/",
+  authorize("admin"),
+  validate(createOrganizationSchema),
+  createOrganization
+);
+
+// Admin / Org Admin: List accessible organizations
+router.get("/", authorize("admin", "org_admin"), getOrganizations);
+
+// Tenant-Isolated Routes below (Admin or assigned Org Admin)
+router.get("/:id", enforceTenantIsolation, getOrganizationById);
+router.put(
+  "/:id",
+  enforceTenantIsolation,
+  validate(updateOrganizationSchema),
+  updateOrganization
+);
+
+// Members & Roster management
+router.get("/:id/members", enforceTenantIsolation, getOrganizationMembers);
+router.post(
+  "/:id/members",
+  enforceTenantIsolation,
+  validate(addMemberSchema),
+  addMember
+);
+router.delete("/:id/members/:memberId", enforceTenantIsolation, removeMember);
+
+// Curriculum assignment
+router.post(
+  "/:id/courses",
+  enforceTenantIsolation,
+  validate(assignCourseSchema),
+  assignCourse
+);
+router.delete("/:id/courses/:courseId", enforceTenantIsolation, removeCourse);
+
+// Bulk student enrollment
+router.post(
+  "/:id/bulk-enroll",
+  enforceTenantIsolation,
+  validate(bulkEnrollSchema),
+  bulkEnrollStudents
+);
+
+// Tenant-level analytics dashboard
+router.get("/:id/analytics", enforceTenantIsolation, getOrganizationAnalytics);
+
+export default router;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\organizations\organization.validation.ts ===
+import { z } from "zod";
+
+const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const codeRegex = /^[A-Z0-9]+(?:-[A-Z0-9]+)*$/;
+
+export const createOrganizationSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Organization name must be at least 2 characters")
+    .max(120, "Organization name cannot exceed 120 characters"),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(slugRegex, "Slug must be lowercase alphanumeric and hyphens only"),
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(codeRegex, "Code must be uppercase alphanumeric and hyphens only"),
+  domain: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .optional(),
+  description: z.string().trim().optional(),
+  website: z.string().trim().url().optional(),
+  adminEmail: z.string().trim().email().optional(),
+  maxStudents: z.number().int().min(1).default(500),
+});
+
+export const updateOrganizationSchema = createOrganizationSchema.partial().omit({
+  code: true,
+});
+
+export const addMemberSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Invalid member email"),
+  role: z.enum(["student", "instructor", "org_admin"]).default("student"),
+  name: z.string().trim().min(2).optional(),
+});
+
+export const assignCourseSchema = z.object({
+  courseId: z
+    .string()
+    .regex(objectIdRegex, "Invalid course ID format"),
+});
+
+export const studentBatchItemSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+  name: z.string().trim().min(2).optional(),
+});
+
+export const bulkEnrollSchema = z.object({
+  courseIds: z
+    .array(z.string().regex(objectIdRegex, "Invalid course ID format"))
+    .min(1, "At least one course ID must be provided"),
+  students: z
+    .array(studentBatchItemSchema)
+    .min(1, "At least one student must be provided")
+    .max(500, "Cannot process more than 500 students in a single batch"),
+});
+
+export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
+export type UpdateOrganizationInput = z.infer<typeof updateOrganizationSchema>;
+export type AddMemberInput = z.infer<typeof addMemberSchema>;
+export type AssignCourseInput = z.infer<typeof assignCourseSchema>;
+export type BulkEnrollInput = z.infer<typeof bulkEnrollSchema>;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\peerReviews\peerReview.model.ts ===
+import mongoose, { Schema, type Document } from "mongoose";
+
+export interface ICodeComment {
+  line: number;
+  comment: string;
+  createdAt: Date;
+}
+
+export interface IPeerReview extends Document {
+  assignment: mongoose.Types.ObjectId;
+  submission: mongoose.Types.ObjectId;
+  course: mongoose.Types.ObjectId;
+  author: mongoose.Types.ObjectId;
+  reviewer: mongoose.Types.ObjectId;
+  status: "assigned" | "in_progress" | "completed" | "expired";
+  deadline: Date;
+  score?: number;
+  feedback?: string;
+  codeComments: ICodeComment[];
+  submittedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const codeCommentSchema = new Schema<ICodeComment>(
+  {
+    line: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+    comment: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 1000,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: true }
+);
+
+const peerReviewSchema = new Schema<IPeerReview>(
+  {
+    assignment: {
+      type: Schema.Types.ObjectId,
+      ref: "Assignment",
+      required: true,
+      index: true,
+    },
+    submission: {
+      type: Schema.Types.ObjectId,
+      ref: "Submission",
+      required: true,
+      index: true,
+    },
+    course: {
+      type: Schema.Types.ObjectId,
+      ref: "Course",
+      required: true,
+      index: true,
+    },
+    author: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    reviewer: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    status: {
+      type: String,
+      enum: ["assigned", "in_progress", "completed", "expired"],
+      default: "assigned",
+      index: true,
+    },
+    deadline: {
+      type: Date,
+      required: true,
+    },
+    score: {
+      type: Number,
+      min: 0,
+      max: 100,
+    },
+    feedback: {
+      type: String,
+      trim: true,
+    },
+    codeComments: {
+      type: [codeCommentSchema],
+      default: [],
+    },
+    submittedAt: {
+      type: Date,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+peerReviewSchema.index({ submission: 1, reviewer: 1 }, { unique: true });
+peerReviewSchema.index({ reviewer: 1, status: 1 });
+peerReviewSchema.index({ author: 1, assignment: 1 });
+
+export const PeerReview = mongoose.model<IPeerReview>(
+  "PeerReview",
+  peerReviewSchema
+);
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\peerReviews\peerReview.routes.ts ===
+import { Router } from "express";
+
+import {
+  assignPeerReviews,
+  getMyAssignedReviews,
+  getReceivedReviewsForSubmission,
+  getPeerReviewById,
+  addCodeComment,
+  submitPeerReview,
+  getAssignmentPeerReviews,
+} from "./peerReview.controller";
+
+import { authenticate } from "../../middlewares/auth.middleware";
+import { authorize } from "../../middlewares/role.middleware";
+import { validate } from "../../middlewares/validate.middleware";
+
+import {
+  assignPeerReviewsSchema,
+  addCodeCommentSchema,
+  submitPeerReviewSchema,
+} from "./peerReview.validation";
+
+const router = Router();
+
+router.use(authenticate);
+
+// Instructor assigns peer reviews
+router.post(
+  "/assign",
+  authorize("instructor", "admin"),
+  validate(assignPeerReviewsSchema),
+  assignPeerReviews
+);
+
+// Student reviews to complete
+router.get("/assigned", authorize("student"), getMyAssignedReviews);
+
+// Reviews received for a submission
+router.get("/received/:submissionId", getReceivedReviewsForSubmission);
+
+// Instructor view all reviews for an assignment
+router.get(
+  "/assignment/:assignmentId",
+  authorize("instructor", "admin"),
+  getAssignmentPeerReviews
+);
+
+// Single review detail
+router.get("/:id", getPeerReviewById);
+
+// Add code comment
+router.post(
+  "/:id/comments",
+  authorize("student"),
+  validate(addCodeCommentSchema),
+  addCodeComment
+);
+
+// Submit completed review
+router.post(
+  "/:id/review",
+  authorize("student"),
+  validate(submitPeerReviewSchema),
+  submitPeerReview
+);
+
+export default router;
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\peerReviews\peerReview.validation.ts ===
+import { z } from "zod";
+
+const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+
+export const assignPeerReviewsSchema = z.object({
+  assignmentId: z
+    .string()
+    .regex(objectIdRegex, "Invalid assignment ID format"),
+  deadline: z
+    .string()
+    .refine((val) => !isNaN(Date.parse(val)), {
+      message: "Invalid date format for deadline",
+    })
+    .optional(),
+});
+
+export const addCodeCommentSchema = z.object({
+  line: z.number().int().min(1, "Line number must be a positive integer"),
+  comment: z
+    .string()
+    .min(1, "Comment cannot be empty")
+    .max(1000, "Comment cannot exceed 1000 characters"),
+});
+
+export const submitPeerReviewSchema = z.object({
+  score: z.number().min(0).max(100).optional(),
+  feedback: z.string().min(5, "Feedback must be at least 5 characters"),
+  codeComments: z
+    .array(
+      z.object({
+        line: z.number().int().min(1),
+        comment: z.string().min(1).max(1000),
+      })
+    )
+    .optional(),
+});
+
+export type AssignPeerReviewsInput = z.infer<typeof assignPeerReviewsSchema>;
+export type AddCodeCommentInput = z.infer<typeof addCodeCommentSchema>;
+export type SubmitPeerReviewInput = z.infer<typeof submitPeerReviewSchema>;
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\progress\progress.model.ts ===
+import { Schema, model, Types, Document } from "mongoose";
+
+export interface IProgress extends Document {
+student: Types.ObjectId;
+course: Types.ObjectId;
+completedLessons: Types.ObjectId[];
+lastAccessedAt?: Date;
+}
+
+const progressSchema = new Schema<IProgress>(
+{
+student: {
+type: Schema.Types.ObjectId,
+ref: "User",
+required: true,
+},
+course: {
+type: Schema.Types.ObjectId,
+ref: "Course",
+required: true,
+},
+completedLessons: [
+{
+type: Schema.Types.ObjectId,
+ref: "Lesson",
+},
+],
+lastAccessedAt: {
+type: Date,
+},
+},
+{ timestamps: true }
+);
+
+// Har student ke liye ek course ka sirf ek progress record.
+progressSchema.index({ student: 1, course: 1 }, { unique: true });
+
+const Progress = model<IProgress>("Progress", progressSchema);
+
+export default Progress;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\progress\progress.routes.ts ===
+import { Router } from "express";
+import { authenticate } from "../../middlewares/auth.middleware";
+import {
+  completeLesson,
+  getCourseProgress,
+} from "./progress.controller";
+
+const router = Router();
+
+// Mark lesson as complete (supporting both standard and short route shapes)
+router.post(
+  "/:courseId/lessons/:lessonId/complete",
+  authenticate,
+  completeLesson
+);
+
+router.post(
+  "/:courseId/:lessonId",
+  authenticate,
+  completeLesson
+);
+
+router.get("/:courseId", authenticate, getCourseProgress);
+
+export default router;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\progress\progress.validation.ts ===
+import { z } from "zod";
+
+export const completeLessonSchema = z.object({
+params: z.object({
+courseId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid course ID"),
+lessonId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid lesson ID"),
+}),
+});
+
+export const courseProgressSchema = z.object({
+params: z.object({
+courseId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid course ID"),
+}),
+});
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\resources\downloadLog.model.ts ===
+import mongoose, { Schema, type Document, Types } from "mongoose";
+
+export interface IDownloadLog extends Document {
+  resource: Types.ObjectId;
+  student: Types.ObjectId;
+  course: Types.ObjectId;
+  downloadedAt: Date;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+const downloadLogSchema = new Schema<IDownloadLog>(
+  {
+    resource: {
+      type: Schema.Types.ObjectId,
+      ref: "Resource",
+      required: true,
+      index: true,
+    },
+    student: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    course: {
+      type: Schema.Types.ObjectId,
+      ref: "Course",
+      required: true,
+      index: true,
+    },
+    downloadedAt: {
+      type: Date,
+      default: Date.now,
+      index: true,
+    },
+    ipAddress: {
+      type: String,
+      trim: true,
+    },
+    userAgent: {
+      type: String,
+      trim: true,
+    },
+  },
+  { timestamps: false }
+);
+
+downloadLogSchema.index({ course: 1, downloadedAt: -1 });
+
+export const DownloadLog = mongoose.model<IDownloadLog>(
+  "DownloadLog",
+  downloadLogSchema
+);
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\resources\resource.model.ts ===
+import mongoose, { Schema, type Document, Types } from "mongoose";
+
+export interface IResource extends Document {
+  course: Types.ObjectId;
+  lesson?: Types.ObjectId;
+  title: string;
+  description?: string;
+  fileUrl: string;
+  fileSize: number;
+  fileType: string;
+  isDownloadable: boolean;
+  downloadCount: number;
+  uploadedBy: Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const resourceSchema = new Schema<IResource>(
+  {
+    course: {
+      type: Schema.Types.ObjectId,
+      ref: "Course",
+      required: true,
+      index: true,
+    },
+    lesson: {
+      type: Schema.Types.ObjectId,
+      ref: "Lesson",
+      index: true,
+    },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 2,
+      maxlength: 150,
+    },
+    description: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+    },
+    fileUrl: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    fileSize: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+    },
+    fileType: {
+      type: String,
+      required: true,
+      trim: true,
+      lowercase: true,
+      default: "pdf",
+    },
+    isDownloadable: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+    downloadCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    uploadedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+  },
+  { timestamps: true }
+);
+
+resourceSchema.index({ course: 1, isDownloadable: 1 });
+
+export const Resource = mongoose.model<IResource>("Resource", resourceSchema);
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\resources\resource.routes.ts ===
+import { Router } from "express";
+
+import {
+  createResource,
+  getCourseResources,
+  updateResource,
+  deleteResource,
+  generateDownloadToken,
+  downloadResourceWithToken,
+  getResourceAnalytics,
+} from "./resource.controller";
+
+import { authenticate } from "../../middlewares/auth.middleware";
+import { authorize } from "../../middlewares/role.middleware";
+import { validate } from "../../middlewares/validate.middleware";
+import {
+  createResourceSchema,
+  updateResourceSchema,
+} from "./resource.validation";
+
+const router = Router();
+
+// Public download verification route (token-gated)
+router.get("/download/:token", downloadResourceWithToken);
+
+// Protected routes below
+router.use(authenticate);
+
+// Course resources & analytics
+router.get("/course/:courseId", getCourseResources);
+router.get(
+  "/course/:courseId/analytics",
+  authorize("instructor", "admin"),
+  getResourceAnalytics
+);
+
+// Resource CRUD
+router.post(
+  "/",
+  authorize("instructor", "admin"),
+  validate(createResourceSchema),
+  createResource
+);
+
+router.patch(
+  "/:resourceId",
+  authorize("instructor", "admin"),
+  validate(updateResourceSchema),
+  updateResource
+);
+
+router.delete(
+  "/:resourceId",
+  authorize("instructor", "admin"),
+  deleteResource
+);
+
+// Generate time-limited signed download token
+router.post("/:resourceId/download-token", generateDownloadToken);
+
+export default router;
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\resources\resource.validation.ts ===
+import { z } from "zod";
+
+const objectIdRegex = /^[a-fA-F0-9]{24}$/;
+
+export const createResourceSchema = z.object({
+  courseId: z.string().regex(objectIdRegex, "Invalid course ID"),
+  lessonId: z.string().regex(objectIdRegex, "Invalid lesson ID").optional(),
+  title: z.string().trim().min(2).max(150),
+  description: z.string().trim().max(500).optional(),
+  fileUrl: z.string().trim().url(),
+  fileSize: z.coerce.number().min(0).default(0),
+  fileType: z.string().trim().min(2).max(20).default("pdf"),
+  isDownloadable: z.boolean().default(true),
+});
+
+export const updateResourceSchema = createResourceSchema
+  .omit({ courseId: true })
+  .partial();
+
+export type CreateResourceInput = z.infer<typeof createResourceSchema>;
+export type UpdateResourceInput = z.infer<typeof updateResourceSchema>;
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\reviews\review.model.ts ===
+import mongoose, { Document, Schema } from "mongoose";
+
+export interface IReview extends Document {
+  student: mongoose.Types.ObjectId;
+  course: mongoose.Types.ObjectId;
+  rating: number;
+  comment: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const reviewSchema = new Schema<IReview>(
+  {
+    student: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    course: {
+      type: Schema.Types.ObjectId,
+      ref: "Course",
+      required: true,
+    },
+    rating: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 5,
+    },
+    comment: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 3,
+      maxlength: 1000,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+reviewSchema.index(
+  { student: 1, course: 1 },
+  { unique: true }
+);
+
+const Review = mongoose.model<IReview>("Review", reviewSchema);
+
+export default Review;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\reviews\review.routes.ts ===
+import { Router } from "express";
+import {
+  authenticate,
+  authorize,
+} from "../../middlewares/auth.middleware";
+
+import {
+  createReview,
+  getCourseReviews,
+  updateReview,
+  deleteReview,
+} from "./review.controller";
+
+const router = Router();
+
+router.post(
+  "/:courseId",
+  authenticate,
+  authorize("student"),
+  createReview
+);
+
+router.patch(
+  "/:reviewId",
+  authenticate,
+  authorize("student"),
+  updateReview
+);
+
+router.get("/:courseId", getCourseReviews);
+
+router.delete(
+  "/:reviewId",
+  authenticate,
+  authorize("student"),
+  deleteReview
+);
+
+export default router;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\students\student.routes.ts ===
+import { Router } from "express";
+import { authenticate } from "../../middlewares/auth.middleware";
+import {
+  getStudentDashboard,
+  getMyCourses,
+} from "./student.controller";
+
+const router = Router();
+
+router.get("/dashboard", authenticate, getStudentDashboard);
+router.get("/my-courses", authenticate, getMyCourses);
+
+export default router;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\users\user.routes.ts ===
+import { Router } from "express";
+
+import {
+  getProfile,
+  updateProfile,
+  changePassword,
+} from "./user.controller";
+
+import {
+  updateProfileSchema,
+  changePasswordSchema,
+} from "./user.validation";
+
+import { authenticate } from "../../middlewares/auth.middleware";
+import { validate } from "../../middlewares/validate.middleware";
+
+const router = Router();
+
+router.use(authenticate);
+
+router.get("/profile", getProfile);
+
+router.patch(
+  "/profile",
+  validate(updateProfileSchema),
+  updateProfile
+);
+
+router.patch(
+  "/change-password",
+  validate(changePasswordSchema),
+  changePassword
+);
+
+export default router;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\users\user.validation.ts ===
+import { z } from "zod";
+
+export const updateProfileSchema = z.object({
+  name: z.string().trim().min(2).max(80).optional(),
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(8).max(72),
+});
+
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\wishlist\wishlist.model.ts ===
+import mongoose, { Schema, Document } from "mongoose";
+
+export interface IWishlist extends Document {
+  student: mongoose.Types.ObjectId;
+  course: mongoose.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const wishlistSchema = new Schema<IWishlist>(
+  {
+    student: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    course: {
+      type: Schema.Types.ObjectId,
+      ref: "Course",
+      required: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Same course ko wishlist mein duplicate add hone se rokega.
+wishlistSchema.index(
+  { student: 1, course: 1 },
+  { unique: true }
+);
+
+const Wishlist = mongoose.model<IWishlist>(
+  "Wishlist",
+  wishlistSchema
+);
+
+export default Wishlist;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\modules\wishlist\wishlist.routes.ts ===
+import { Router } from "express";
+
+import {
+  authenticate,
+  authorize,
+} from "../../middlewares/auth.middleware";
+
+import {
+  addToWishlist,
+  getMyWishlist,
+  removeFromWishlist,
+} from "./wishlist.controller";
+
+const router = Router();
+
+// Add course to wishlist
+router.post(
+  "/:courseId",
+  authenticate,
+  authorize("student"),
+  addToWishlist
+);
+
+// Get logged-in student's wishlist
+router.get(
+  "/",
+  authenticate,
+  authorize("student"),
+  getMyWishlist
+);
+
+// Remove course from wishlist
+router.delete(
+  "/:courseId",
+  authenticate,
+  authorize("student"),
+  removeFromWishlist
+);
+
+export default router;
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\middlewares\auth.middleware.ts ===
+import type { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
+import { ApiError } from "../utils/ApiError";
+import { User } from "../modules/auth/auth.model";
+
+export interface AuthRequest extends Request {
+  userId?: string;
+  userRole?: string;
+  organizationId?: string;
+}
+
+export const authenticate = async (
+  req: AuthRequest,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const authHeader = req.headers?.authorization;
+    const bearerToken =
+      typeof authHeader === "string" && authHeader.startsWith("Bearer ")
+        ? authHeader.slice(7).trim()
+        : undefined;
+    const token = req.cookies?.sf_token || bearerToken;
+
+    if (!token) {
+      throw new ApiError(401, "Authentication required");
+    }
+
+    const secret = process.env.JWT_SECRET;
+
+    if (!secret) {
+      throw new Error("JWT_SECRET is not configured");
+    }
+
+    const decoded = jwt.verify(token, secret);
+
+    if (typeof decoded !== "object" || !decoded.sub) {
+      throw new ApiError(401, "Invalid authentication token");
+    }
+
+    const user = await User.findById(decoded.sub).select(
+      "_id role isActive organization"
+    );
+
+    if (!user) {
+      throw new ApiError(401, "User no longer exists");
+    }
+
+    // Check whether account is active
+    if (!user.isActive) {
+      throw new ApiError(
+        403,
+        "Your account has been deactivated. Please contact administrator."
+      );
+    }
+
+    req.userId = user.id;
+    req.userRole = user.role;
+    req.organizationId = user.organization ? user.organization.toString() : undefined;
+
+    next();
+  } catch (error) {
+    next(
+      error instanceof ApiError
+        ? error
+        : new ApiError(401, "Invalid or expired authentication token")
+    );
+  }
+};
+
+export const authorize = (...roles: string[]) => {
+  return (
+    req: AuthRequest,
+    _res: Response,
+    next: NextFunction
+  ): void => {
+    if (!req.userRole || !roles.includes(req.userRole)) {
+      next(
+        new ApiError(403, "You are not authorized to access this resource")
+      );
+      return;
+    }
+
+    next();
+  };
+};
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\middlewares\error.middleware.ts ===
+import type { ErrorRequestHandler } from "express";
+
+export const errorHandler: ErrorRequestHandler = (
+  err,
+  _req,
+  res,
+  _next
+) => {
+  console.error(err);
+
+  const statusCode =
+    typeof err.statusCode === "number" &&
+    err.statusCode >= 400 &&
+    err.statusCode < 600
+      ? err.statusCode
+      : 500;
+
+  res.status(statusCode).json({
+    success: false,
+    message:
+      statusCode === 500
+        ? "Internal server error"
+        : err.message || "Request failed",
+  });
+};
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\middlewares\role.middleware.ts ===
+import type { Response, NextFunction } from "express";
+import type { AuthRequest } from "./auth.middleware";
+import { ApiError } from "../utils/ApiError";
+
+type UserRole = "student" | "instructor" | "admin" | "org_admin";
+
+export const authorize = (...allowedRoles: UserRole[]) => {
+  return (
+    req: AuthRequest,
+    _res: Response,
+    next: NextFunction
+  ): void => {
+    if (!req.userId || !req.userRole) {
+      next(new ApiError(401, "Authentication required"));
+      return;
+    }
+
+    if (!allowedRoles.includes(req.userRole as UserRole)) {
+      next(new ApiError(403, "You do not have permission to access this resource"));
+      return;
+    }
+
+    next();
+  };
+};
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\middlewares\tenantIsolation.middleware.ts ===
+import type { Response, NextFunction } from "express";
+import mongoose from "mongoose";
+import type { AuthRequest } from "./auth.middleware";
+import { ApiError } from "../utils/ApiError";
+import { Organization } from "../modules/organizations/organization.model";
+
+/**
+ * Middleware ensuring strict tenant-level data isolation.
+ * Prevents organization administrators from accessing or modifying another tenant's data.
+ */
+export const enforceTenantIsolation = async (
+  req: AuthRequest,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.userId;
+    const userRole = req.userRole;
+
+    if (!userId) {
+      throw new ApiError(401, "Authentication required");
+    }
+
+    // System super-admins have cross-tenant oversight
+    if (userRole === "admin") {
+      return next();
+    }
+
+    if (userRole !== "org_admin") {
+      throw new ApiError(
+        403,
+        "You do not have permission to access organization management"
+      );
+    }
+
+    // Resolve target organization ID from route params or body
+    const rawTargetId =
+      req.params.id ||
+      req.params.orgId ||
+      req.body.organizationId ||
+      req.query.organizationId;
+
+    const targetOrgId =
+      typeof rawTargetId === "string" ? rawTargetId.trim() : undefined;
+
+    if (targetOrgId && !mongoose.Types.ObjectId.isValid(targetOrgId)) {
+      throw new ApiError(400, "Invalid organization ID format");
+    }
+
+    // Find organizations where this user is designated as admin
+    const authorizedOrg = await Organization.findOne({
+      adminUsers: new mongoose.Types.ObjectId(userId),
+      isActive: true,
+    });
+
+    if (!authorizedOrg) {
+      throw new ApiError(
+        403,
+        "No active organization found associated with your administrator account"
+      );
+    }
+
+    // If a specific target organization was requested, strictly check match
+    if (targetOrgId && authorizedOrg._id.toString() !== targetOrgId) {
+      throw new ApiError(
+        403,
+        "Tenant isolation violation: You do not have permission to access another organization's data"
+      );
+    }
+
+    // Attach resolved organization to request for convenient downstream use
+    req.organizationId = authorizedOrg._id.toString();
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\middlewares\upload.middleware.ts ===
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import crypto from "crypto";
+import type { Request } from "express";
+
+// Upload directory
+const uploadDir = path.resolve(process.cwd(), "uploads", "resources");
+
+// Create directory if it does not exist
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Allowed file types
+const allowedMimeTypes = [
+  "application/pdf",
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "text/plain",
+  "text/csv",
+  "application/x-7z-compressed",
+];
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, uploadDir);
+  },
+
+  filename: (_req, file, cb) => {
+    const uniqueName = `${crypto.randomUUID()}${path.extname(
+      file.originalname
+    ).toLowerCase()}`;
+
+    cb(null, uniqueName);
+  },
+});
+
+const fileFilter = (
+  _req: Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
+  if (!allowedMimeTypes.includes(file.mimetype)) {
+    return cb(
+      new Error("Invalid file type. Only PDF, ZIP, DOC, DOCX, PPT, PPTX, TXT, CSV and 7Z are allowed.")
+    );
+  }
+
+  cb(null, true);
+};
+
+export const uploadResource = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 20 * 1024 * 1024, // 20 MB
+    files: 1,
+  },
+});
+
+=== C:\Users\Admin\Desktop\skillforge-lms\server\src\middlewares\validate.middleware.ts ===
+import type { RequestHandler } from "express";
+import type { ZodType } from "zod";
+
+export const validate = (schema: ZodType): RequestHandler => {
+  return (req, res, next) => {
+    const result = schema.safeParse(req.body);
+
+    if (!result.success) {
+      res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: result.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        })),
+      });
+      return;
+    }
+
+    req.body = result.data;
+    next();
+  };
+};
+
+=== server\src\modules\auth\auth.controller.ts ===
+import type { Response } from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import crypto from "node:crypto";
+
+import { User } from "./auth.model";
+
+import type {
+  RegisterInput,
+  LoginInput,
+  ForgotPasswordInput,
+  ResetPasswordInput,
+} from "./auth.validation";
+
+import { asyncHandler } from "../../utils/asyncHandler";
+import { ApiError } from "../../utils/ApiError";
+import type { AuthRequest } from "../../middlewares/auth.middleware";
+
+const COOKIE_NAME = "sf_token";
+const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+const RESET_TOKEN_EXPIRY = 15 * 60 * 1000;
+
+const getJwtSecret = (): string => {
+  const secret = process.env.JWT_SECRET;
+
+  if (!secret) {
+    throw new Error("JWT_SECRET is not configured");
+  }
+
+  return secret;
+};
+
+const setAuthCookie = (res: Response, userId: string): void => {
+  const token = jwt.sign(
+    { sub: userId },
+    getJwtSecret(),
+    { expiresIn: "7d" }
+  );
+
+  res.cookie(COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: COOKIE_MAX_AGE,
+    path: "/",
+  });
+};
+
+// REGISTER
+export const register = asyncHandler(async (req, res) => {
+  const { name, email, password } = req.body as RegisterInput;
+
+  const existingUser = await User.findOne({ email });
+
+  if (existingUser) {
+    throw new ApiError(409, "Email is already registered");
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 12);
+
+  const user = await User.create({
+    name,
+    email,
+    password: hashedPassword,
+  });
+
+  setAuthCookie(res, user.id);
+
+  res.status(201).json({
+    success: true,
+    message: "Registration successful",
+    data: {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    },
+  });
+});
+
+// LOGIN
+// LOGIN
+export const login = asyncHandler(async (req, res) => {
+  const { email, password } = req.body as LoginInput;
+
+  const user = await User.findOne({ email }).select("+password");
+
+  if (!user || !(await bcrypt.compare(password, user.password))) {
+    throw new ApiError(401, "Invalid email or password");
+  }
+
+  // Check whether account is active
+  if (!user.isActive) {
+    throw new ApiError(
+      403,
+      "Your account has been deactivated. Please contact administrator."
+    );
+  }
+
+  setAuthCookie(res, user.id);
+
+  res.status(200).json({
+    success: true,
+    message: "Login successful",
+    data: {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    },
+  });
+});
+
+// LOGOUT
+export const logout = asyncHandler(async (_req, res) => {
+  res.clearCookie(COOKIE_NAME, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Logout successful",
+  });
+});
+
+// GET CURRENT USER
+export const getCurrentUser = asyncHandler(async (req, res) => {
+  const authReq = req as AuthRequest;
+
+  const user = await User.findById(authReq.userId).select(
+    "name email role isEmailVerified createdAt"
+  );
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  res.status(200).json({
+    success: true,
+    data: {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isEmailVerified: user.isEmailVerified,
+        createdAt: user.get("createdAt"),
+      },
+    },
+  });
+});
+
+// FORGOT PASSWORD
+export const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body as ForgotPasswordInput;
+
+  const user = await User.findOne({ email });
+
+  // Account existence is not disclosed in the API response.
+  if (!user) {
+    res.status(200).json({
+      success: true,
+      message:
+        "If the account exists, password reset instructions will be sent.",
+    });
+
+    return;
+  }
+
+  // Generate a new random token.
+  const resetToken = crypto.randomBytes(32).toString("hex");
+
+  // Store only the SHA-256 hash in MongoDB.
+  const hashedToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
+
+  user.set("passwordResetToken", hashedToken);
+  user.set(
+    "passwordResetExpires",
+    new Date(Date.now() + RESET_TOKEN_EXPIRY)
+  );
+
+  await user.save({ validateBeforeSave: false });
+
+  // Development only: show the raw token in the server terminal.
+  if (process.env.NODE_ENV !== "production") {
+    console.log("\n==================================");
+    console.log("PASSWORD RESET TOKEN");
+    console.log(`Email: ${email}`);
+    console.log(`Token: ${resetToken}`);
+    console.log("Expires in: 15 minutes");
+    console.log("==================================\n");
+  }
+
+  res.status(200).json({
+    success: true,
+    message:
+      "If the account exists, password reset instructions will be sent.",
+  });
+});
+
+// RESET PASSWORD
+export const resetPassword = asyncHandler(async (req, res) => {
+  const { token, newPassword } = req.body as ResetPasswordInput;
+
+  // Reject an empty token.
+  const rawToken = token.trim();
+
+  if (!rawToken) {
+    throw new ApiError(400, "Reset token is required");
+  }
+
+  // Hash the raw token to match the hash stored in MongoDB.
+  const hashedToken = crypto
+    .createHash("sha256")
+    .update(rawToken)
+    .digest("hex");
+
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: { $gt: new Date() },
+  }).select("+passwordResetToken +passwordResetExpires +password");
+
+  if (!user) {
+    throw new ApiError(
+      400,
+      "Reset token is invalid or expired. Request a new token."
+    );
+  }
+
+  // Update the password.
+  user.password = await bcrypt.hash(newPassword, 12);
+
+  // Invalidate the reset token after successful use.
+  user.set("passwordResetToken", undefined);
+  user.set("passwordResetExpires", undefined);
+
+  await user.save();
+
+  // Clear any existing authentication cookie.
+  res.clearCookie(COOKIE_NAME, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Password reset successful. Please log in again.",
+  });
+});
+
+=== server\src\modules\courses\course.controller.ts ===
+import type { Response } from "express";
+import mongoose from "mongoose";
+
+import { Course } from "./course.model";
+import type {
+  CreateCourseInput,
+  UpdateCourseInput,
+  CourseQueryInput,
+  CourseTranslationInput,
+} from "./course.validation";
+
+import { asyncHandler } from "../../utils/asyncHandler";
+import { ApiError } from "../../utils/ApiError";
+import type { AuthRequest } from "../../middlewares/auth.middleware";
+import { getPreferredLanguage, localizeCourse } from "../../utils/language";
+
+const getUserId = (req: AuthRequest): string => {
+  if (!req.userId) {
+    throw new ApiError(401, "Authentication required");
+  }
+
+  return req.userId;
+};
+
+const sendCourse = (res: Response, statusCode: number, course: unknown) => {
+  res.status(statusCode).json({
+    success: true,
+    data: { course },
+  });
+};
+
+// CREATE COURSE â€” Instructor/Admin
+export const createCourse = asyncHandler(async (req, res) => {
+  const authReq = req as AuthRequest;
+  const userId = getUserId(authReq);
+
+  const body = req.body as CreateCourseInput;
+
+  const course = await Course.create({
+    ...body,
+    instructor: userId,
+  });
+
+  sendCourse(res, 201, course);
+});
+
+// GET ALL PUBLISHED COURSES â€” Search, Filter, Pagination, Localization
+export const getCourses = asyncHandler(async (req, res) => {
+  const query = req.query as unknown as CourseQueryInput;
+
+  const page = Math.max(1, Number(query.page) || 1);
+  const limit = Math.min(100, Math.max(1, Number(query.limit) || 10));
+
+  const filter: Record<string, unknown> = {
+    isPublished: true,
+  };
+
+  if (query.category) {
+    filter.category = query.category;
+  }
+
+  if (query.level) {
+    filter.level = query.level;
+  }
+
+  if (query.search) {
+    filter.$text = { $search: query.search };
+  }
+
+  let sort: Record<string, 1 | -1> = { createdAt: -1 };
+
+  switch (query.sort) {
+    case "oldest":
+      sort = { createdAt: 1 };
+      break;
+    case "price-low":
+      sort = { price: 1 };
+      break;
+    case "price-high":
+      sort = { price: -1 };
+      break;
+    default:
+      sort = { createdAt: -1 };
+  }
+
+  const [courses, total] = await Promise.all([
+    Course.find(filter)
+      .populate("instructor", "name")
+      .sort(sort)
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean(),
+    Course.countDocuments(filter),
+  ]);
+
+  const preferredLang = getPreferredLanguage(req);
+  const localizedCourses = courses.map((course) =>
+    localizeCourse(course, preferredLang)
+  );
+
+  res.status(200).json({
+    success: true,
+    data: {
+      courses: localizedCourses,
+      requestedLanguage: preferredLang,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    },
+  });
+});
+
+// GET SINGLE PUBLISHED COURSE (with localized fields)
+export const getCourseById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.isValidObjectId(id)) {
+    throw new ApiError(400, "Invalid course ID");
+  }
+
+  const course = await Course.findOne({
+    _id: id,
+    isPublished: true,
+  })
+    .populate("instructor", "name")
+    .populate("prerequisites", "title level thumbnail isPublished");
+
+  if (!course) {
+    throw new ApiError(404, "Course not found");
+  }
+
+  const preferredLang = getPreferredLanguage(req);
+  const localizedCourse = localizeCourse(course.toObject(), preferredLang);
+
+  sendCourse(res, 200, localizedCourse);
+});
+
+// ADD / UPDATE COURSE TRANSLATION â€” Instructor/Admin
+export const addCourseTranslation = asyncHandler(async (req, res) => {
+  const authReq = req as AuthRequest;
+  const userId = getUserId(authReq);
+  const { id } = req.params;
+
+  if (!mongoose.isValidObjectId(id)) {
+    throw new ApiError(400, "Invalid course ID");
+  }
+
+  const course = await Course.findById(id);
+
+  if (!course) {
+    throw new ApiError(404, "Course not found");
+  }
+
+  const isOwner = course.instructor.toString() === userId;
+  const isAdmin = authReq.userRole === "admin";
+
+  if (!isOwner && !isAdmin) {
+    throw new ApiError(403, "You cannot update translations for this course");
+  }
+
+  const { language, title, description, shortDescription } =
+    req.body as CourseTranslationInput;
+  const langKey = language.toLowerCase().trim();
+
+  const existingIdx = course.translations.findIndex(
+    (t) => t.language.toLowerCase() === langKey
+  );
+
+  if (existingIdx >= 0) {
+    course.translations[existingIdx] = {
+      language: langKey,
+      title,
+      description,
+      shortDescription,
+    };
+  } else {
+    course.translations.push({
+      language: langKey,
+      title,
+      description,
+      shortDescription,
+    });
+    if (!course.supportedLanguages.includes(langKey)) {
+      course.supportedLanguages.push(langKey);
+    }
+  }
+
+  await course.save();
+
+  res.status(200).json({
+    success: true,
+    message: `Translation for language '${langKey}' saved successfully`,
+    data: {
+      courseId: course._id,
+      supportedLanguages: course.supportedLanguages,
+      translations: course.translations,
+    },
+  });
+});
+
+// UPDATE OWN COURSE â€” Instructor/Admin
+export const updateCourse = asyncHandler(async (req, res) => {
+  const authReq = req as AuthRequest;
+  const userId = getUserId(authReq);
+  const { id } = req.params;
+
+  if (!mongoose.isValidObjectId(id)) {
+    throw new ApiError(400, "Invalid course ID");
+  }
+
+  const updates = req.body as UpdateCourseInput;
+
+  const course = await Course.findById(id);
+
+  if (!course) {
+    throw new ApiError(404, "Course not found");
+  }
+
+  const isOwner = course.instructor.toString() === userId;
+  const isAdmin = authReq.userRole === "admin";
+
+  if (!isOwner && !isAdmin) {
+    throw new ApiError(403, "You cannot update this course");
+  }
+
+  course.set(updates);
+  await course.save();
+
+  sendCourse(res, 200, course);
+});
+
+// DELETE OWN COURSE â€” Instructor/Admin
+export const deleteCourse = asyncHandler(async (req, res) => {
+  const authReq = req as AuthRequest;
+  const userId = getUserId(authReq);
+  const { id } = req.params;
+
+  if (!mongoose.isValidObjectId(id)) {
+    throw new ApiError(400, "Invalid course ID");
+  }
+
+  const course = await Course.findById(id);
+
+  if (!course) {
+    throw new ApiError(404, "Course not found");
+  }
+
+  const isOwner = course.instructor.toString() === userId;
+  const isAdmin = authReq.userRole === "admin";
+
+  if (!isOwner && !isAdmin) {
+    throw new ApiError(403, "You cannot delete this course");
+  }
+
+  await course.deleteOne();
+
+  res.status(200).json({
+    success: true,
+    message: "Course deleted successfully",
+  });
+});
+
+// GET MY COURSES â€” Instructor/Admin
+export const getMyCourses = asyncHandler(async (req, res) => {
+  const authReq = req as AuthRequest;
+  const userId = getUserId(authReq);
+
+  const courses = await Course.find({
+    instructor: userId,
+  }).sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    data: { courses },
+  });
+});
+
+// PUBLISH / UNPUBLISH OWN COURSE â€” Instructor/Admin
+export const toggleCoursePublish = asyncHandler(async (req, res) => {
+  const authReq = req as AuthRequest;
+  const userId = getUserId(authReq);
+  const { id } = req.params;
+
+  if (!mongoose.isValidObjectId(id)) {
+    throw new ApiError(400, "Invalid course ID");
+  }
+
+  const course = await Course.findById(id);
+
+  if (!course) {
+    throw new ApiError(404, "Course not found");
+  }
+
+  const isOwner = course.instructor.toString() === userId;
+  const isAdmin = authReq.userRole === "admin";
+
+  if (!isOwner && !isAdmin) {
+    throw new ApiError(403, "You cannot publish this course");
+  }
+
+  course.isPublished = !course.isPublished;
+  await course.save();
+
+  res.status(200).json({
+    success: true,
+    message: course.isPublished
+      ? "Course published successfully"
+      : "Course unpublished successfully",
+    data: { course },
+  });
+});
+
+=== server\src\utils\ApiError.ts ===
+export class ApiError extends Error {
+  public readonly statusCode: number;
+  public readonly success: boolean;
+
+  constructor(statusCode: number, message: string) {
+    super(message);
+
+    this.name = "ApiError";
+    this.statusCode = statusCode;
+    this.success = false;
+
+    Object.setPrototypeOf(this, ApiError.prototype);
+  }
+}
+
+
+=== C:\Users\Admin\Desktop\skillforge-lms\client\src\index.css ===
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ------------------------------------------------------------------
+   Design tokens: warm brown / tan / cream.
+   Components use the semantic names (bg-surface, text-foreground...)
+   so light and dark mode swap automatically.
+------------------------------------------------------------------- */
+:root {
+  --background: #fdf8ee;
+  --surface: #ffffff;
+  --surface-muted: #f7efe1;
+  --border: #e8dccb;
+  --border-strong: #d9c8b0;
+  --foreground: #3b2a1f;
+  --muted: #7a6a5c;
+
+  --primary-dark: #4e3b2e;
+  --primary: #7a5c45;
+  --primary-light: #9a7b58;
+  --tan: #d4b08c;
+
+  /* Gradient ends for primary buttons (end tone darkened slightly for 4.5:1 text contrast) */
+  --btn-from: #4e3b2e;
+  --btn-to: #8b6b4a;
+  --on-primary: #ffffff;
+
+  --sidebar: #4e3b2e;
+  --sidebar-foreground: #f3e9da;
+  --sidebar-muted: #cdb99f;
+  --sidebar-active: rgba(212, 176, 140, 0.22);
+
+  --success: #4a7a49;
+  --warning: #9a6416;
+  --danger: #b5483e;
+
+  --ring: #9a7b58;
+  --shadow-color: 78 59 46;
+}
+
+.dark {
+  --background: #1e1612;
+  --surface: #2a201a;
+  --surface-muted: #342820;
+  --border: #46372c;
+  --border-strong: #5a4838;
+  --foreground: #f3e9da;
+  --muted: #b9a78f;
+
+  --primary-dark: #d4b08c;
+  --primary: #c19a72;
+  --primary-light: #d4b08c;
+  --tan: #d4b08c;
+
+  --btn-from: #6b4f3b;
+  --btn-to: #8b6b4a;
+  --on-primary: #ffffff;
+
+  --sidebar: #17100c;
+  --sidebar-foreground: #f3e9da;
+  --sidebar-muted: #b9a78f;
+  --sidebar-active: rgba(212, 176, 140, 0.18);
+
+  --success: #7fb47e;
+  --warning: #e0a64f;
+  --danger: #e07b6f;
+
+  --ring: #d4b08c;
+  --shadow-color: 0 0 0;
+}
+
+@theme inline {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-primary-dark: var(--primary-dark);
+  --color-primary: var(--primary);
+  --color-primary-light: var(--primary-light);
+  --color-tan: var(--tan);
+  --color-on-primary: var(--on-primary);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-ring: var(--ring);
+
+  --shadow-soft: 0 1px 2px rgb(var(--shadow-color) / 0.06), 0 8px 24px rgb(var(--shadow-color) / 0.08);
+  --shadow-float: 0 2px 4px rgb(var(--shadow-color) / 0.06), 0 24px 64px rgb(var(--shadow-color) / 0.16);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  ::selection {
+    background: var(--tan);
+    color: #3b2a1f;
+  }
+}
+
+@layer utilities {
+  .bg-brand-gradient {
+    background-image: linear-gradient(90deg, var(--btn-from), var(--btn-to));
+  }
+  .bg-auth-panel {
+    background-image: linear-gradient(135deg, #4e3b2e 0%, #6b503c 45%, #7a5c45 100%);
+  }
+}
+
+/* Network illustration: gentle float, disabled for reduced motion */
+@keyframes sf-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+@keyframes sf-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.06);
+  }
+}
+.sf-float {
+  animation: sf-float 7s ease-in-out infinite;
+}
+.sf-pulse {
+  animation: sf-pulse 4s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+=== C:\Users\Admin\Desktop\skillforge-lms\client\src\main.tsx ===
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import App from './App'
+import { ThemedToaster } from '@/components/ui/ThemedToaster'
+import { AuthProvider } from '@/context/AuthContext'
+import { ThemeProvider } from '@/context/ThemeContext'
+import { ApiError } from '@/lib/api'
+import './index.css'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+      // Do not retry auth/permission/validation failures.
+      retry: (failureCount, error) => !(error instanceof ApiError && error.status >= 400 && error.status < 500) && failureCount < 2,
+    },
+  },
+})
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <AuthProvider>
+            <App />
+            <ThemedToaster />
+          </AuthProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ThemeProvider>
+  </StrictMode>,
+)
+
+=== C:\Users\Admin\Desktop\skillforge-lms\client\src\components\auth\AuthLayout.tsx ===
+import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
+import { Logo } from '@/components/ui/Logo'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
+import { NetworkIllustration } from './NetworkIllustration'
+
+interface AuthLayoutProps {
+  title: string
+  subtitle: string
+  children: ReactNode
+  footer?: ReactNode
+}
+
+/** Split-screen auth shell: brown illustration panel on the left, cream page + floating card on the right. */
+export function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
+  return (
+    <div className="grid min-h-dvh bg-background lg:grid-cols-[55fr_45fr]">
+      {/* Illustration panel (desktop only) */}
+      <aside className="bg-auth-panel relative hidden overflow-hidden lg:block" aria-label="SkillForge introduction">
+        <NetworkIllustration />
+        {/* Soft fade so the tagline stays readable over the network lines */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-72 bg-gradient-to-t from-[#4E3B2E] via-[#4E3B2E]/80 to-transparent" aria-hidden="true" />
+        <div className="relative z-10 flex h-full flex-col justify-between p-10 xl:p-14">
+          <Link to="/" aria-label="SkillForge home" className="w-fit">
+            <Logo light />
+          </Link>
+          <div className="max-w-md">
+            <p className="text-3xl font-bold leading-tight tracking-tight text-[#FDF8EE] xl:text-4xl">
+              Learn together. Build real skills. Get certified.
+            </p>
+            <p className="mt-3 text-base text-[#E8D5BD]">
+              Learning paths, code reviews and live analytics, all in one calm workspace.
+            </p>
+          </div>
+        </div>
+      </aside>
+
+      {/* Form side */}
+      <main id="main" className="relative flex flex-col">
+        {/* Compact brand header on small screens */}
+        <header className="bg-auth-panel flex items-center justify-between px-5 py-4 lg:hidden">
+          <Link to="/" aria-label="SkillForge home">
+            <Logo light />
+          </Link>
+        </header>
+
+        <div className="absolute right-5 top-5 hidden lg:block">
+          <ThemeToggle />
+        </div>
+
+        <div className="flex flex-1 items-center justify-center px-5 py-8 sm:px-8 lg:px-10">
+          <div className="w-full max-w-[480px] rounded-3xl border border-border bg-surface p-7 shadow-float sm:p-10">
+            <h1 className="text-3xl font-bold tracking-tight text-primary-dark sm:text-[2.1rem]">{title}</h1>
+            <p className="mt-2 text-base text-muted">{subtitle}</p>
+            <div className="mt-8">{children}</div>
+            {footer && <div className="mt-7 text-center text-[0.95rem] text-muted">{footer}</div>}
+          </div>
+        </div>
+
+        <div className="flex justify-center pb-6 lg:hidden">
+          <ThemeToggle />
+        </div>
+      </main>
+    </div>
+  )
+}
+
+=== C:\Users\Admin\Desktop\skillforge-lms\client\src\components\auth\NetworkIllustration.tsx ===
+/**
+ * Decorative network of learners: tan dots joined by thin lines, soft avatar
+ * icons and a glowing AI-mentor core. Purely visual (aria-hidden).
+ */
+
+const NODES = [
+  { x: 120, y: 160 },
+  { x: 420, y: 90 },
+  { x: 700, y: 200 },
+  { x: 90, y: 520 },
+  { x: 740, y: 560 },
+  { x: 300, y: 820 },
+  { x: 560, y: 780 },
+]
+
+// Avatars sit on the graph; delay staggers the floating motion.
+const AVATARS = [
+  { x: 190, y: 300, delay: '0s' },
+  { x: 590, y: 290, delay: '-2s' },
+  { x: 290, y: 600, delay: '-4s' },
+  { x: 650, y: 660, delay: '-1s' },
+]
+
+const LINES: Array<[number, number, number, number]> = [
+  [120, 160, 190, 300],
+  [120, 160, 420, 90],
+  [420, 90, 590, 290],
+  [420, 90, 400, 450],
+  [700, 200, 590, 290],
+  [190, 300, 400, 450],
+  [590, 290, 400, 450],
+  [400, 450, 290, 600],
+  [400, 450, 650, 660],
+  [190, 300, 90, 520],
+  [90, 520, 290, 600],
+  [290, 600, 300, 820],
+  [650, 660, 560, 780],
+  [650, 660, 740, 560],
+  [590, 290, 740, 560],
+  [300, 820, 560, 780],
+]
+
+function Avatar({ x, y, delay }: { x: number; y: number; delay: string }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <g className="sf-float" style={{ animationDelay: delay }}>
+        <circle r="46" cy="-22" fill="none" stroke="#D4B08C" strokeOpacity="0.28" />
+        <circle cx="0" cy="-30" r="30" fill="url(#sf-avatar)" />
+        <path d="M-56 56 C-56 14 -34 -4 0 -4 C34 -4 56 14 56 56 Z" fill="url(#sf-avatar)" />
+      </g>
+    </g>
+  )
+}
+
+export function NetworkIllustration() {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      viewBox="0 0 800 900"
+      preserveAspectRatio="xMidYMid slice"
+      className="absolute inset-0 size-full"
+    >
+      <defs>
+        <linearGradient id="sf-avatar" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#E3C6A4" />
+          <stop offset="1" stopColor="#B98F66" />
+        </linearGradient>
+        <radialGradient id="sf-glow">
+          <stop offset="0" stopColor="#D4B08C" stopOpacity="0.55" />
+          <stop offset="1" stopColor="#D4B08C" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+
+      <g stroke="#D4B08C" strokeOpacity="0.38" strokeWidth="1.5">
+        {LINES.map(([x1, y1, x2, y2]) => (
+          <line key={`${x1}-${y1}-${x2}-${y2}`} x1={x1} y1={y1} x2={x2} y2={y2} />
+        ))}
+      </g>
+
+      {NODES.map((n) => (
+        <circle key={`${n.x}-${n.y}`} cx={n.x} cy={n.y} r="7" fill="#D4B08C" fillOpacity="0.9" />
+      ))}
+      {[
+        [60, 260],
+        [520, 140],
+        [770, 380],
+        [180, 700],
+        [480, 640],
+      ].map(([cx, cy]) => (
+        <circle key={`d-${cx}-${cy}`} cx={cx} cy={cy} r="3" fill="#D4B08C" fillOpacity="0.55" />
+      ))}
+
+      {AVATARS.map((a) => (
+        <Avatar key={`${a.x}-${a.y}`} {...a} />
+      ))}
+
+      {/* Glowing AI mentor core */}
+      <g transform="translate(400 450)">
+        <circle r="140" fill="url(#sf-glow)" className="sf-pulse" />
+        <circle r="58" fill="#D4B08C" fillOpacity="0.22" />
+        <rect x="-38" y="-38" width="76" height="76" rx="22" fill="none" stroke="#F3E3CC" strokeOpacity="0.9" strokeWidth="3" />
+        <circle cx="-14" cy="-8" r="5" fill="#F3E3CC" />
+        <circle cx="14" cy="-8" r="5" fill="#F3E3CC" />
+        <path d="M-16 12 Q0 26 16 12" fill="none" stroke="#F3E3CC" strokeWidth="3.5" strokeLinecap="round" />
+        <g stroke="#F3E3CC" strokeOpacity="0.7" strokeWidth="2.5" strokeLinecap="round">
+          <line x1="0" y1="-58" x2="0" y2="-46" />
+          <line x1="0" y1="58" x2="0" y2="46" />
+          <line x1="-58" y1="0" x2="-46" y2="0" />
+          <line x1="58" y1="0" x2="46" y2="0" />
+        </g>
+      </g>
+    </svg>
+  )
+}
+
+=== C:\Users\Admin\Desktop\skillforge-lms\client\src\components\layout\AppShell.tsx ===
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Outlet, useNavigate } from 'react-router-dom'
+import { LogOut, Menu } from 'lucide-react'
+import { toast } from 'sonner'
+import { Badge } from '@/components/ui/Feedback'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
+import { useAuth } from '@/context/AuthContext'
+import { initials, roleLabels } from '@/lib/format'
+import { cn } from '@/lib/cn'
+import { Sidebar } from './Sidebar'
+
+const COLLAPSE_KEY = 'sf-sidebar-collapsed'
+
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function AppShell() {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+  const [collapsed, setCollapsed] = useState(readCollapsed)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
+  const drawerRef = useRef<HTMLDivElement>(null)
+
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((value) => {
+      try {
+        localStorage.setItem(COLLAPSE_KEY, value ? '0' : '1')
+      } catch {
+        /* storage unavailable */
+      }
+      return !value
+    })
+  }, [])
+
+  // Drawer: Esc closes, focus moves in, then returns to the menu button.
+  useEffect(() => {
+    if (!drawerOpen) return
+    const trigger = menuButtonRef.current
+    drawerRef.current?.querySelector<HTMLElement>('a, button')?.focus()
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDrawerOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      trigger?.focus()
+    }
+  }, [drawerOpen])
+
+  if (!user) return null
+
+  const onLogout = async () => {
+    try {
+      await logout()
+      toast.success('Signed out')
+    } finally {
+      navigate('/login', { replace: true })
+    }
+  }
+
+  return (
+    <div className="min-h-dvh bg-background">
+      <a
+        href="#main"
+        className="sr-only z-[60] rounded-lg bg-surface px-4 py-2 font-semibold text-foreground shadow-float focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+      >
+        Skip to main content
+      </a>
+
+      {/* Desktop sidebar */}
+      <aside className={cn('fixed inset-y-0 left-0 z-30 hidden transition-[width] duration-200 lg:block', collapsed ? 'w-[76px]' : 'w-64')}>
+        <Sidebar role={user.role} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
+      </aside>
+
+      {/* Mobile drawer */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setDrawerOpen(false)} aria-hidden="true" />
+          <div ref={drawerRef} className="absolute inset-y-0 left-0 w-72 max-w-[85vw] shadow-float">
+            <Sidebar role={user.role} onClose={() => setDrawerOpen(false)} />
+          </div>
+        </div>
+      )}
+
+      <div className={cn('transition-[padding] duration-200', collapsed ? 'lg:pl-[76px]' : 'lg:pl-64')}>
+        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur sm:px-6">
+          <button
+            ref={menuButtonRef}
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={drawerOpen}
+            className="flex size-10 items-center justify-center rounded-xl border border-border bg-surface text-foreground lg:hidden"
+          >
+            <Menu className="size-5" aria-hidden="true" />
+          </button>
+
+          <div className="flex-1" />
+
+          <ThemeToggle />
+
+          <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface py-1.5 pl-1.5 pr-3">
+            <span
+              className="flex size-9 items-center justify-center rounded-xl bg-brand-gradient text-sm font-bold text-on-primary"
+              aria-hidden="true"
+            >
+              {initials(user.name)}
+            </span>
+            <span className="hidden min-w-0 sm:block">
+              <span className="block max-w-40 truncate text-sm font-semibold leading-tight text-foreground">{user.name}</span>
+              <Badge tone="brand" className="mt-0.5 px-1.5 py-0 text-[0.65rem]">
+                {roleLabels[user.role] ?? user.role}
+              </Badge>
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={onLogout}
+            aria-label="Sign out"
+            title="Sign out"
+            className="flex size-10 items-center justify-center rounded-xl border border-border bg-surface text-foreground transition-colors hover:bg-surface-muted"
+          >
+            <LogOut className="size-5" aria-hidden="true" />
+          </button>
+        </header>
+
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-7xl px-4 py-8 focus:outline-none sm:px-6 lg:px-8">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  )
+}
+
+=== C:\Users\Admin\Desktop\skillforge-lms\client\src\context\AuthContext.tsx ===
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { api, setUnauthorizedHandler } from '@/lib/api'
+import type { AuthResponse, User } from '@/types'
+
+interface AuthContextValue {
+  user: User | null
+  /** True only while we are checking for an existing session on first load. */
+  loading: boolean
+  login: (input: { email: string; password: string }) => Promise<User>
+  register: (input: { name: string; email: string; password: string }) => Promise<User>
+  logout: () => Promise<void>
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null)
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient()
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  // Restore the session from the httpOnly cookie. We use /users/profile because
+  // /auth/me on the server currently returns only { userId, role }.
+  useEffect(() => {
+    const controller = new AbortController()
+    api
+      .get<AuthResponse>('/users/profile', undefined, controller.signal)
+      .then((data) => setUser(data.user))
+      .catch(() => setUser(null))
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false)
+      })
+    return () => controller.abort()
+  }, [])
+
+  // If any request comes back 401 later, drop the local session.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setUser(null)
+      queryClient.clear()
+    })
+    return () => setUnauthorizedHandler(null)
+  }, [queryClient])
+
+  const login = useCallback<AuthContextValue['login']>(async (input) => {
+    const data = await api.post<AuthResponse>('/auth/login', input)
+    setUser(data.user)
+    return data.user
+  }, [])
+
+  const register = useCallback<AuthContextValue['register']>(async (input) => {
+    const data = await api.post<AuthResponse>('/auth/register', input)
+    setUser(data.user)
+    return data.user
+  }, [])
+
+  const logout = useCallback<AuthContextValue['logout']>(async () => {
+    try {
+      await api.post('/auth/logout')
+    } finally {
+      setUser(null)
+      queryClient.clear()
+    }
+  }, [queryClient])
+
+  const value = useMemo(
+    () => ({ user, loading, login, register, logout }),
+    [user, loading, login, register, logout],
+  )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used inside AuthProvider')
+  return ctx
+}
+
+=== C:\Users\Admin\Desktop\skillforge-lms\client\src\features\auth\authForm.ts ===
+import type { FieldValues, Path, UseFormSetError } from 'react-hook-form'
+import { ApiError } from '@/lib/api'
+
+/**
+ * Copies server-side Zod errors onto the matching form fields.
+ * Returns a banner message for anything that is not field specific.
+ */
+export function applyServerError<T extends FieldValues>(error: unknown, setError: UseFormSetError<T>, knownFields: readonly string[]): string | null {
+  if (!(error instanceof ApiError)) return 'Something went wrong. Please try again.'
+
+  let handled = false
+  for (const item of error.fieldErrors) {
+    if (knownFields.includes(item.field)) {
+      setError(item.field as Path<T>, { type: 'server', message: item.message })
+      handled = true
+    }
+  }
+  return handled ? null : error.message
+}
+
+export const LAST_EMAIL_KEY = 'sf-last-email'
+
+=== C:\Users\Admin\Desktop\skillforge-lms\client\src\features\auth\ForgotPasswordPage.tsx ===
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { AlertCircle, ArrowLeft, CheckCircle2, Mail } from 'lucide-react'
+import { AuthLayout } from '@/components/auth/AuthLayout'
+import { Button } from '@/components/ui/Button'
+import { Field } from '@/components/ui/Field'
+import { api, getErrorMessage } from '@/lib/api'
+
+const schema = z.object({
+  email: z.string().trim().min(1, 'Enter your email').pipe(z.email('Enter a valid email address')),
+})
+type FormValues = z.infer<typeof schema>
+
+export function ForgotPasswordPage() {
+  const [sent, setSent] = useState(false)
+  const [banner, setBanner] = useState<string | null>(null)
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { email: '' } })
+
+  const onSubmit = handleSubmit(async (values) => {
+    setBanner(null)
+    try {
+      await api.post('/auth/forgot-password', values)
+      setSent(true)
+    } catch (error) {
+      setBanner(getErrorMessage(error))
+    }
+  })
+
+  return (
+    <AuthLayout
+      title="Forgot password?"
+      subtitle="Enter your email and we will send reset instructions"
+      footer={
+        <Link to="/login" className="inline-flex items-center gap-2 font-bold text-foreground underline-offset-4 hover:underline">
+          <ArrowLeft className="size-4" aria-hidden="true" /> Back to Sign In
+        </Link>
+      }
+    >
+      {sent ? (
+        <div role="status" className="space-y-4 text-center">
+          <CheckCircle2 className="mx-auto size-12 text-success" aria-hidden="true" />
+          <p className="text-foreground">If an account exists for that email, reset instructions are on their way.</p>
+          <Link to="/reset-password" className="inline-block font-semibold text-primary underline-offset-4 hover:underline">
+            I already have a reset token
+          </Link>
+        </div>
+      ) : (
+        <form onSubmit={onSubmit} noValidate className="space-y-5">
+          {banner && (
+            <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+              <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <span>{banner}</span>
+            </div>
+          )}
+          <Field
+            label="Email"
+            type="email"
+            autoComplete="email"
+            placeholder="your@email.com"
+            icon={<Mail className="size-5" />}
+            error={errors.email?.message}
+            {...register('email')}
+          />
+          <Button type="submit" size="lg" fullWidth loading={isSubmitting}>
+            Send reset instructions
+          </Button>
+        </form>
+      )}
+    </AuthLayout>
+  )
+}
+
+=== C:\Users\Admin\Desktop\skillforge-lms\client\src\features\auth\LoginPage.tsx ===
+import { useState } from 'react'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { AlertCircle, Mail } from 'lucide-react'
+import { toast } from 'sonner'
+import { AuthLayout } from '@/components/auth/AuthLayout'
+import { Button } from '@/components/ui/Button'
+import { Checkbox } from '@/components/ui/Checkbox'
+import { Field } from '@/components/ui/Field'
+import { useAuth } from '@/context/AuthContext'
+import { applyServerError, LAST_EMAIL_KEY } from './authForm'
+
+const schema = z.object({
+  email: z.string().trim().min(1, 'Enter your email').pipe(z.email('Enter a valid email address')),
+  password: z.string().min(1, 'Enter your password'),
+  remember: z.boolean(),
+})
+type FormValues = z.infer<typeof schema>
+
+function readSavedEmail(): string {
+  try {
+    return localStorage.getItem(LAST_EMAIL_KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-5" aria-hidden="true">
+      <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5a5.6 5.6 0 0 1-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.8Z" />
+      <path fill="#34A853" d="M12 24c3.2 0 6-1.1 7.9-2.9l-3.9-3c-1.1.7-2.5 1.2-4 1.2-3.1 0-5.7-2.1-6.6-4.9H1.4v3.1A12 12 0 0 0 12 24Z" />
+      <path fill="#FBBC05" d="M5.4 14.4a7.2 7.2 0 0 1 0-4.8V6.5H1.4a12 12 0 0 0 0 11l4-3.1Z" />
+      <path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.4 6.5l4 3.1C6.3 6.9 8.9 4.8 12 4.8Z" />
+    </svg>
+  )
+}
+
+function GitHubIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-5" aria-hidden="true" fill="currentColor">
+      <path d="M12 .5a11.5 11.5 0 0 0-3.6 22.4c.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.4 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.4 11.4 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.7 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .4.2.7.8.6A11.5 11.5 0 0 0 12 .5Z" />
+    </svg>
+  )
+}
+
+export function LoginPage() {
+  const { user, login } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const from = (location.state as { from?: string } | null)?.from ?? '/dashboard'
+  const [banner, setBanner] = useState<string | null>(null)
+
+  const savedEmail = readSavedEmail()
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: savedEmail, password: '', remember: savedEmail !== '' },
+  })
+
+  if (user) return <Navigate to={from} replace />
+
+  const onSubmit = handleSubmit(async (values) => {
+    setBanner(null)
+    try {
+      await login({ email: values.email, password: values.password })
+      try {
+        if (values.remember) localStorage.setItem(LAST_EMAIL_KEY, values.email)
+        else localStorage.removeItem(LAST_EMAIL_KEY)
+      } catch {
+        /* storage unavailable */
+      }
+      toast.success('Welcome back!')
+      navigate(from, { replace: true })
+    } catch (error) {
+      setBanner(applyServerError(error, setError, ['email', 'password']))
+    }
+  })
+
+  const comingSoon = (provider: string) => () => toast.info(`${provider} sign-in is not set up yet. Use your email and password for now.`)
+
+  return (
+    <AuthLayout
+      title="Welcome to SkillForge"
+      subtitle="Sign in to access your learning journey"
+      footer={
+        <>
+          Don&apos;t have an account?{' '}
+          <Link to="/register" className="font-bold text-foreground underline-offset-4 hover:underline">
+            Create a New Account
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={onSubmit} noValidate className="space-y-5">
+        {banner && (
+          <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <span>{banner}</span>
+          </div>
+        )}
+
+        <Field
+          label="Email"
+          type="email"
+          autoComplete="email"
+          placeholder="your@email.com"
+          icon={<Mail className="size-5" />}
+          error={errors.email?.message}
+          {...register('email')}
+        />
+
+        <Field
+          label="Password"
+          type="password"
+          revealable
+          autoComplete="current-password"
+          placeholder="Enter your password"
+          error={errors.password?.message}
+          {...register('password')}
+        />
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Checkbox label="Remember me" {...register('remember')} />
+          <Link to="/forgot-password" className="text-[0.95rem] font-medium text-foreground underline-offset-4 hover:underline">
+            Forgot password?
+          </Link>
+        </div>
+
+        <Button type="submit" size="lg" fullWidth loading={isSubmitting}>
+          {isSubmitting ? 'Signing inâ€¦' : 'Sign In'}
+        </Button>
+      </form>
+
+      <div className="my-6 flex items-center gap-4 text-sm text-muted" role="separator" aria-label="or continue with">
+        <span className="h-px flex-1 bg-border" />
+        or continue with
+        <span className="h-px flex-1 bg-border" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Button type="button" variant="secondary" size="lg" onClick={comingSoon('Google')}>
+          <GoogleIcon /> Google
+        </Button>
+        <Button type="button" variant="secondary" size="lg" onClick={comingSoon('GitHub')}>
+          <GitHubIcon /> GitHub
+        </Button>
+      </div>
+    </AuthLayout>
+  )
+}
+
+=== C:\Users\Admin\Desktop\skillforge-lms\client\src\features\auth\RegisterPage.tsx ===
+import { useState } from 'react'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { AlertCircle, Mail, User } from 'lucide-react'
+import { toast } from 'sonner'
+import { AuthLayout } from '@/components/auth/AuthLayout'
+import { Button } from '@/components/ui/Button'
+import { Field } from '@/components/ui/Field'
+import { useAuth } from '@/context/AuthContext'
+import { applyServerError } from './authForm'
+
+// Same limits as server/src/modules/auth/auth.validation.ts
+const schema = z
+  .object({
+    name: z.string().trim().min(2, 'Name must be at least 2 characters').max(80, 'Name is too long'),
+    email: z.string().trim().min(1, 'Enter your email').pipe(z.email('Enter a valid email address')),
+    password: z.string().min(8, 'Use at least 8 characters').max(72, 'Use 72 characters or fewer'),
+    confirm: z.string().min(1, 'Confirm your password'),
+  })
+  .refine((v) => v.password === v.confirm, { path: ['confirm'], message: 'Passwords do not match' })
+type FormValues = z.infer<typeof schema>
+
+export function RegisterPage() {
+  const { user, register: registerUser } = useAuth()
+  const navigate = useNavigate()
+  const [banner, setBanner] = useState<string | null>(null)
+
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { name: '', email: '', password: '', confirm: '' },
+  })
+
+  if (user) return <Navigate to="/dashboard" replace />
+
+  const onSubmit = handleSubmit(async ({ name, email, password }) => {
+    setBanner(null)
+    try {
+      await registerUser({ name, email, password })
+      toast.success('Account created. Welcome to SkillForge!')
+      navigate('/dashboard', { replace: true })
+    } catch (error) {
+      setBanner(applyServerError(error, setError, ['name', 'email', 'password']))
+    }
+  })
+
+  return (
+    <AuthLayout
+      title="Create your account"
+      subtitle="Start your SkillForge learning journey"
+      footer={
+        <>
+          Already have an account?{' '}
+          <Link to="/login" className="font-bold text-foreground underline-offset-4 hover:underline">
+            Sign In
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={onSubmit} noValidate className="space-y-5">
+        {banner && (
+          <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <span>{banner}</span>
+          </div>
+        )}
+
+        <Field label="Full name" autoComplete="name" placeholder="Your name" icon={<User className="size-5" />} error={errors.name?.message} {...register('name')} />
+        <Field
+          label="Email"
+          type="email"
+          autoComplete="email"
+          placeholder="your@email.com"
+          icon={<Mail className="size-5" />}
+          error={errors.email?.message}
+          {...register('email')}
+        />
+        <Field
+          label="Password"
+          type="password"
+          revealable
+          autoComplete="new-password"
+          placeholder="At least 8 characters"
+          error={errors.password?.message}
+          {...register('password')}
+        />
+        <Field
+          label="Confirm password"
+          type="password"
+          revealable
+          autoComplete="new-password"
+          placeholder="Repeat your password"
+          error={errors.confirm?.message}
+          {...register('confirm')}
+        />
+
+        <Button type="submit" size="lg" fullWidth loading={isSubmitting}>
+          {isSubmitting ? 'Creating accountâ€¦' : 'Create Account'}
+        </Button>
+      </form>
+    </AuthLayout>
+  )
+}
+
+=== C:\Users\Admin\Desktop\skillforge-lms\client\src\features\auth\ResetPasswordPage.tsx ===
+import { useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { AlertCircle, ArrowLeft, KeyRound } from 'lucide-react'
+import { toast } from 'sonner'
+import { AuthLayout } from '@/components/auth/AuthLayout'
+import { Button } from '@/components/ui/Button'
+import { Field } from '@/components/ui/Field'
+import { api, getErrorMessage } from '@/lib/api'
+
+const schema = z
+  .object({
+    token: z.string().trim().min(1, 'Paste your reset token'),
+    newPassword: z.string().min(8, 'Use at least 8 characters').max(72, 'Use 72 characters or fewer'),
+    confirm: z.string().min(1, 'Confirm your password'),
+  })
+  .refine((v) => v.newPassword === v.confirm, { path: ['confirm'], message: 'Passwords do not match' })
+type FormValues = z.infer<typeof schema>
+
+export function ResetPasswordPage() {
+  const [params] = useSearchParams()
+  const navigate = useNavigate()
+  const [banner, setBanner] = useState<string | null>(null)
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { token: params.get('token') ?? '', newPassword: '', confirm: '' },
+  })
+
+  const onSubmit = handleSubmit(async ({ token, newPassword }) => {
+    setBanner(null)
+    try {
+      await api.post('/auth/reset-password', { token, newPassword })
+      toast.success('Password updated. Please sign in.')
+      navigate('/login', { replace: true })
+    } catch (error) {
+      setBanner(getErrorMessage(error))
+    }
+  })
+
+  return (
+    <AuthLayout
+      title="Set a new password"
+      subtitle="Paste the reset token and choose a new password"
+      footer={
+        <Link to="/login" className="inline-flex items-center gap-2 font-bold text-foreground underline-offset-4 hover:underline">
+          <ArrowLeft className="size-4" aria-hidden="true" /> Back to Sign In
+        </Link>
+      }
+    >
+      <form onSubmit={onSubmit} noValidate className="space-y-5">
+        {banner && (
+          <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <span>{banner}</span>
+          </div>
+        )}
+        <Field label="Reset token" autoComplete="off" placeholder="Paste your token" icon={<KeyRound className="size-5" />} error={errors.token?.message} {...register('token')} />
+        <Field label="New password" type="password" revealable autoComplete="new-password" placeholder="At least 8 characters" error={errors.newPassword?.message} {...register('newPassword')} />
+        <Field label="Confirm password" type="password" revealable autoComplete="new-password" placeholder="Repeat your password" error={errors.confirm?.message} {...register('confirm')} />
+        <Button type="submit" size="lg" fullWidth loading={isSubmitting}>
+          Update password
+        </Button>
+      </form>
+    </AuthLayout>
+  )
+}
+
+=== C:\Users\Admin\Desktop\skillforge-lms\client\src\lib\api.ts ===
+import type { Course, CourseFilters, DiscussionPost, Lesson, Paginated } from '../types';
+
+const BASE = (import.meta as any).env?.VITE_API_URL ?? 'http://localhost:5000/api';
+
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`${BASE}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new ApiError(json?.message ?? 'Something went wrong. Try again.', res.status);
+  return (json?.data ?? json) as T;
+}
+
+function toList<T>(raw: any, keys: string[]): T[] {
+  if (Array.isArray(raw)) return raw;
+  for (const k of keys) if (Array.isArray(raw?.[k])) return raw[k];
+  return [];
+}
+
+export const api = {
+  async listCourses(f: Partial<CourseFilters>): Promise<Paginated<Course>> {
+    const q = new URLSearchParams();
+    if (f.search) q.set('search', f.search);
+    if (f.category) q.set('category', f.category);
+    if (f.level) q.set('level', f.level);
+    if (f.price) q.set('price', f.price);
+    if (f.minRating) q.set('minRating', f.minRating);
+    if (f.sort) q.set('sort', f.sort);
+    q.set('page', String(f.page ?? 1));
+    q.set('limit', '12');
+    const raw: any = await request(`/courses?${q}`);
+    const items = toList<Course>(raw, ['items', 'courses']);
+    return {
+      items,
+      total: raw?.total ?? items.length,
+      page: raw?.page ?? f.page ?? 1,
+      pages: raw?.pages ?? raw?.totalPages ?? 1,
+    };
+  },
+
+  async getCourse(id: string): Promise<Course> {
+    const raw: any = await request(`/courses/${id}`);
+    return raw?.course ?? raw;
+  },
+
+  async getLessons(courseId: string): Promise<Lesson[]> {
+    const raw = await request(`/lessons?courseId=${courseId}`);
+    return toList<Lesson>(raw, ['lessons', 'items']).sort((a, b) => a.order - b.order);
+  },
+
+  async getLesson(lessonId: string): Promise<Lesson> {
+    const raw: any = await request(`/lessons/${lessonId}`);
+    return raw?.lesson ?? raw;
+  },
+
+  async myEnrollments(): Promise<{ courseId: string }[]> {
+    const raw: any = await request('/enrollments/me');
+    return toList<any>(raw, ['enrollments', 'items']).map((e) => ({
+      courseId: typeof e.course === 'object' ? e.course?._id : e.course ?? e.courseId,
+    }));
+  },
+
+  enroll: (courseId: string) =>
+    request('/enrollments', { method: 'POST', body: JSON.stringify({ courseId }) }),
+
+  markComplete: (lessonId: string, courseId: string) =>
+    request('/progress', { method: 'POST', body: JSON.stringify({ lessonId, courseId, completed: true }) }),
+
+  async getDiscussions(lessonId: string): Promise<DiscussionPost[]> {
+    const raw = await request(`/discussions?lessonId=${lessonId}`);
+    return toList<DiscussionPost>(raw, ['discussions', 'items', 'posts']);
+  },
+
+  postDiscussion: (lessonId: string, body: string, parentId?: string) =>
+    request<DiscussionPost>('/discussions', {
+      method: 'POST',
+      body: JSON.stringify({ lessonId, body, parentId: parentId ?? null }),
+    }),
+
+  deleteDiscussion: (id: string) => request(`/discussions/${id}`, { method: 'DELETE' }),
+};
+
+export function currentUser(): { _id: string; name: string } | null {
+  try {
+    return JSON.parse(localStorage.getItem('user') ?? 'null');
+  } catch {
+    return null;
+  }
+}
+
+=== C:\Users\Admin\Desktop\skillforge-lms\client\src\routes\ProtectedRoute.tsx ===
+import type { ReactNode } from 'react'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { Logo } from '@/components/ui/Logo'
+import { useAuth } from '@/context/AuthContext'
+import type { UserRole } from '@/types'
+
+function FullPageLoader() {
+  return (
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-background" role="status" aria-live="polite">
+      <Logo />
+      <div className="h-1 w-40 overflow-hidden rounded-full bg-border">
+        <div className="h-full w-1/2 animate-pulse rounded-full bg-brand-gradient" />
+      </div>
+      <span className="sr-only">Loading your session</span>
+    </div>
+  )
+}
+
+/** Requires a signed-in user. Pass `roles` to also restrict by role. */
+export function ProtectedRoute({ roles }: { roles?: UserRole[] }) {
+  const { user, loading } = useAuth()
+  const location = useLocation()
+
+  if (loading) return <FullPageLoader />
+  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  if (roles && !roles.includes(user.role)) return <Navigate to="/dashboard" replace />
+
+  return <Outlet />
+}
+
+/** Public-only wrapper that waits for session restore so the login page does not flash. */
+export function SessionGate({ children }: { children: ReactNode }) {
+  const { loading } = useAuth()
+  if (loading) return <FullPageLoader />
+  return <>{children}</>
+}

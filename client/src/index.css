@@ -1,0 +1,175 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ------------------------------------------------------------------
+   Design tokens: warm brown / tan / cream.
+   Components use the semantic names (bg-surface, text-foreground...)
+   so light and dark mode swap automatically.
+------------------------------------------------------------------- */
+:root {
+  --background: #fdf8ee;
+  --surface: #ffffff;
+  --surface-muted: #f7efe1;
+  --border: #e8dccb;
+  --border-strong: #d9c8b0;
+  --foreground: #3b2a1f;
+  --muted: #7a6a5c;
+
+  --primary-dark: #4e3b2e;
+  --primary: #7a5c45;
+  --primary-light: #9a7b58;
+  --tan: #d4b08c;
+
+  /* Gradient ends for primary buttons (end tone darkened slightly for 4.5:1 text contrast) */
+  --btn-from: #4e3b2e;
+  --btn-to: #8b6b4a;
+  --on-primary: #ffffff;
+
+  --sidebar: #4e3b2e;
+  --sidebar-foreground: #f3e9da;
+  --sidebar-muted: #cdb99f;
+  --sidebar-active: rgba(212, 176, 140, 0.22);
+
+  --success: #4a7a49;
+  --warning: #9a6416;
+  --danger: #b5483e;
+
+  --ring: #9a7b58;
+  --shadow-color: 78 59 46;
+}
+
+.dark {
+  --background: #1e1612;
+  --surface: #2a201a;
+  --surface-muted: #342820;
+  --border: #46372c;
+  --border-strong: #5a4838;
+  --foreground: #f3e9da;
+  --muted: #b9a78f;
+
+  --primary-dark: #d4b08c;
+  --primary: #c19a72;
+  --primary-light: #d4b08c;
+  --tan: #d4b08c;
+
+  --btn-from: #6b4f3b;
+  --btn-to: #8b6b4a;
+  --on-primary: #ffffff;
+
+  --sidebar: #17100c;
+  --sidebar-foreground: #f3e9da;
+  --sidebar-muted: #b9a78f;
+  --sidebar-active: rgba(212, 176, 140, 0.18);
+
+  --success: #7fb47e;
+  --warning: #e0a64f;
+  --danger: #e07b6f;
+
+  --ring: #d4b08c;
+  --shadow-color: 0 0 0;
+}
+
+@theme inline {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-primary-dark: var(--primary-dark);
+  --color-primary: var(--primary);
+  --color-primary-light: var(--primary-light);
+  --color-tan: var(--tan);
+  --color-on-primary: var(--on-primary);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-ring: var(--ring);
+
+  --shadow-soft: 0 1px 2px rgb(var(--shadow-color) / 0.06), 0 8px 24px rgb(var(--shadow-color) / 0.08);
+  --shadow-float: 0 2px 4px rgb(var(--shadow-color) / 0.06), 0 24px 64px rgb(var(--shadow-color) / 0.16);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  ::selection {
+    background: var(--tan);
+    color: #3b2a1f;
+  }
+}
+
+@layer utilities {
+  .bg-brand-gradient {
+    background-image: linear-gradient(90deg, var(--btn-from), var(--btn-to));
+  }
+  .bg-auth-panel {
+    background-image: linear-gradient(135deg, #4e3b2e 0%, #6b503c 45%, #7a5c45 100%);
+  }
+}
+
+/* Network illustration: gentle float, disabled for reduced motion */
+@keyframes sf-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+@keyframes sf-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.06);
+  }
+}
+.sf-float {
+  animation: sf-float 7s ease-in-out infinite;
+}
+.sf-pulse {
+  animation: sf-pulse 4s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
