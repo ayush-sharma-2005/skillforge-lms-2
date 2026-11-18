@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { CheckCircle2, Compass, Search, SearchX, X } from 'lucide-react'
+import { CheckCircle2, Compass, SearchX } from 'lucide-react'
 import { Badge, EmptyState, ErrorState, Skeleton } from '@/components/ui/Feedback'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { CourseThumb } from '@/components/ui/CourseThumb'
+import { FilterBar, type FilterChip } from '@/components/ui/FilterBar'
 import { Pagination } from '@/components/ui/Pagination'
+import { SearchInput } from '@/components/ui/SearchInput'
 import { Select } from '@/components/ui/Select'
 import { useDebouncedValue } from '@/hooks'
 import { getErrorMessage } from '@/lib/api'
@@ -114,7 +116,17 @@ export function CatalogPage() {
     [enrollments.data],
   )
 
-  const hasFilters = Boolean(filters.search || filters.category || filters.level || filters.sort !== 'newest')
+  const chips: FilterChip[] = [
+    ...(filters.search
+      ? [{ key: 'q', label: `Search: “${filters.search}”`, onRemove: () => { setSearchText(''); update({ q: '' }) } }]
+      : []),
+    ...(filters.category ? [{ key: 'category', label: `Category: ${filters.category}`, onRemove: () => update({ category: '' }) }] : []),
+    ...(filters.level ? [{ key: 'level', label: `Level: ${levelLabels[filters.level]}`, onRemove: () => update({ level: '' }) }] : []),
+    ...(filters.sort !== 'newest'
+      ? [{ key: 'sort', label: `Sort: ${SORTS.find((o) => o.value === filters.sort)?.label ?? filters.sort}`, onRemove: () => update({ sort: '' }) }]
+      : []),
+  ]
+  const hasFilters = chips.length > 0
   const total = courses.data?.pagination.total
 
   const clearAll = () => {
@@ -129,76 +141,55 @@ export function CatalogPage() {
         <p className="mt-1 text-muted">Find your next skill. Search, filter and enroll in a few clicks.</p>
       </div>
 
-      <Card className="p-4 sm:p-5">
-        <form role="search" onSubmit={(e) => e.preventDefault()} className="grid gap-4 lg:grid-cols-[2fr_1fr_1fr_1fr]">
-          <div>
-            <label htmlFor="catalog-search" className="mb-1.5 block text-sm font-semibold text-foreground">
-              Search
-            </label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden="true" />
-              <input
-                id="catalog-search"
-                type="search"
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                placeholder="Search by title or topic"
-                className="h-11 w-full rounded-xl border border-border-strong bg-surface pl-11 pr-10 text-[0.95rem] text-foreground placeholder:text-muted/70 focus:border-ring focus:outline-none focus:ring-4 focus:ring-ring/20"
-              />
-              {searchText && (
-                <button
-                  type="button"
-                  onClick={() => setSearchText('')}
-                  aria-label="Clear search"
-                  className="absolute right-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted hover:bg-surface-muted hover:text-foreground"
-                >
-                  <X className="size-4" aria-hidden="true" />
-                </button>
-              )}
-            </div>
-          </div>
+      <FilterBar chips={chips} onClear={clearAll}>
+        <SearchInput
+          id="catalog-search"
+          value={searchText}
+          onChange={setSearchText}
+          placeholder="Search by title or topic"
+          className="sm:col-span-2 lg:col-span-1"
+        />
 
-          <Select label="Category" value={filters.category} onChange={(e) => update({ category: e.target.value })}>
-            <option value="">All categories</option>
-            {(categories.data ?? []).map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-            {/* Keep a deep-linked category selectable even before the list loads */}
-            {filters.category && !(categories.data ?? []).includes(filters.category) && (
-              <option value={filters.category}>{filters.category}</option>
-            )}
-          </Select>
+        <Select label="Category" active={Boolean(filters.category)} value={filters.category} onChange={(e) => update({ category: e.target.value })}>
+          <option value="">All categories</option>
+          {(categories.data ?? []).map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+          {/* Keep a deep-linked category selectable even before the list loads */}
+          {filters.category && !(categories.data ?? []).includes(filters.category) && (
+            <option value={filters.category}>{filters.category}</option>
+          )}
+        </Select>
 
-          <Select label="Level" value={filters.level} onChange={(e) => update({ level: e.target.value })}>
-            <option value="">All levels</option>
-            {LEVELS.map((l) => (
-              <option key={l} value={l}>
-                {levelLabels[l]}
-              </option>
-            ))}
-          </Select>
+        <Select label="Level" active={Boolean(filters.level)} value={filters.level} onChange={(e) => update({ level: e.target.value })}>
+          <option value="">All levels</option>
+          {LEVELS.map((l) => (
+            <option key={l} value={l}>
+              {levelLabels[l]}
+            </option>
+          ))}
+        </Select>
 
-          <Select label="Sort by" value={filters.sort} onChange={(e) => update({ sort: e.target.value === 'newest' ? '' : e.target.value })}>
-            {SORTS.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </Select>
-        </form>
-      </Card>
+        <Select
+          label="Sort by"
+          active={filters.sort !== 'newest'}
+          value={filters.sort}
+          onChange={(e) => update({ sort: e.target.value === 'newest' ? '' : e.target.value })}
+        >
+          {SORTS.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </Select>
+      </FilterBar>
 
       <div className="flex min-h-8 items-center justify-between gap-3">
         <p className="text-sm text-muted" role="status" aria-live="polite">
           {courses.isPending ? 'Loading courses…' : total !== undefined ? `${total} course${total === 1 ? '' : 's'} found` : ''}
         </p>
-        {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={clearAll}>
-            <X className="size-4" aria-hidden="true" /> Clear filters
-          </Button>
-        )}
       </div>
 
       {courses.isPending ? (

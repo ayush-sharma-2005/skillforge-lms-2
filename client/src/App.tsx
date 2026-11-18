@@ -15,6 +15,9 @@ const CatalogPage = lazy(() => import('@/features/courses/CatalogPage').then((m)
 const CourseDetailPage = lazy(() => import('@/features/courses/CourseDetailPage').then((m) => ({ default: m.CourseDetailPage })))
 const LessonPage = lazy(() => import('@/features/lessons/LessonPage').then((m) => ({ default: m.LessonPage })))
 const MyCoursesPage = lazy(() => import('@/features/student/MyCoursesPage').then((m) => ({ default: m.MyCoursesPage })))
+const PathsPage = lazy(() => import('@/features/learningPaths/PathsPage').then((m) => ({ default: m.PathsPage })))
+const PathDetailPage = lazy(() => import('@/features/learningPaths/PathDetailPage').then((m) => ({ default: m.PathDetailPage })))
+const MyPathsPage = lazy(() => import('@/features/learningPaths/MyPathsPage').then((m) => ({ default: m.MyPathsPage })))
 
 function PageFallback() {
   return (
@@ -82,6 +85,30 @@ export default function App() {
             element={
               <Suspense fallback={<PageFallback />}>
                 <LessonPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/learning-paths"
+            element={
+              <Suspense fallback={<PageFallback />}>
+                <PathsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/learning-paths/:pathId"
+            element={
+              <Suspense fallback={<PageFallback />}>
+                <PathDetailPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/my-paths"
+            element={
+              <Suspense fallback={<PageFallback />}>
+                <MyPathsPage />
               </Suspense>
             }
           />

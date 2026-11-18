@@ -222,3 +222,85 @@ export interface DiscussionListResponse {
   discussions: DiscussionThread[]
   pagination: Pagination
 }
+
+// ── Learning Paths ────────────────────────────────────────────────────────────
+
+export interface LearningPathCourseRef {
+  _id: string
+  title: string
+  thumbnail?: string
+  price: number
+  category: string
+  level: string
+  isPublished?: boolean
+}
+
+export interface LearningPathCourse {
+  course: LearningPathCourseRef
+  order: number
+  prerequisites: LearningPathCourseRef[]
+}
+
+export interface LearningPath {
+  _id: string
+  title: string
+  description: string
+  thumbnail?: string
+  instructor: { _id: string; name: string; email?: string }
+  category: string
+  level: 'beginner' | 'intermediate' | 'advanced'
+  courses: LearningPathCourse[]
+  enrolledStudents?: string[]
+  isPublished: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface LearningPathListResponse {
+  learningPaths: LearningPath[]
+  pagination: Pagination
+}
+
+export interface PathCourseStatus {
+  courseId: string
+  title: string
+  thumbnail?: string
+  price: number
+  level: string
+  order: number
+  isUnlocked: boolean
+  isEnrolled: boolean
+  status: 'locked' | 'available' | 'in_progress' | 'completed'
+  unmetPrerequisites: { courseId: string; title: string }[]
+  progress: { completedLessons: number; totalLessons: number; percentage: number }
+}
+
+export interface LearningPathProgress {
+  learningPath: {
+    id: string
+    title: string
+    description: string
+    thumbnail?: string
+    category: string
+    level: string
+  }
+  summary: {
+    totalCourses: number
+    completedCourses: number
+    unlockedCourses: number
+    lockedCourses: number
+    overallPathPercentage: number
+  }
+  courses: PathCourseStatus[]
+}
+
+export interface MyLearningPath {
+  _id: string
+  title: string
+  description: string
+  thumbnail?: string
+  instructor: { _id: string; name: string }
+  category: string
+  level: string
+  courses: LearningPathCourse[]
+}

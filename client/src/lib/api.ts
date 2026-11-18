@@ -43,7 +43,13 @@ interface RequestOptions {
 }
 
 function buildUrl(path: string, query?: Query): string {
-  const url = `${BASE_URL}${path.startsWith('/') ? path : `/${path}`}`
+  let cleanPath = path.startsWith('/') ? path : `/${path}`
+  // BASE_URL already ends in /api, so a caller passing '/api/learning-paths' must not
+  // end up requesting '/api/api/learning-paths' (that 404s with "Route not found").
+  if (BASE_URL.endsWith('/api') && (cleanPath === '/api' || cleanPath.startsWith('/api/'))) {
+    cleanPath = cleanPath.slice('/api'.length) || '/'
+  }
+  const url = `${BASE_URL}${cleanPath}`
   if (!query) return url
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(query)) {

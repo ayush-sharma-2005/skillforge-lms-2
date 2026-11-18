@@ -7,6 +7,7 @@ import {
   Compass,
   LayoutDashboard,
   Library,
+  Map,
   Route,
   Users,
   type LucideIcon,
@@ -25,7 +26,8 @@ const student: NavItem[] = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
   { label: 'My Courses', to: '/my-courses', icon: BookOpen },
   { label: 'Course Catalog', to: '/courses', icon: Compass },
-  { label: 'Learning Paths', to: '/paths', icon: Route, soon: true },
+  { label: 'Learning Paths', to: '/learning-paths', icon: Route },
+  { label: 'My Paths', to: '/my-paths', icon: Map },
   { label: 'Assignments', to: '/assignments', icon: ClipboardCheck, soon: true },
   { label: 'Certificates', to: '/certificates', icon: Award, soon: true },
 ]
